@@ -60,13 +60,13 @@ func TestManager_SaveAndLoad(t *testing.T) {
 
 	// Create source config file
 	sourceDir := filepath.Join(tmpDir, "source")
-	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
 		t.Fatalf("Failed to create source dir: %v", err)
 	}
 
 	sourceFile := filepath.Join(sourceDir, "config.yaml")
 	testContent := []byte("key: value\nname: test")
-	if err := os.WriteFile(sourceFile, testContent, 0644); err != nil {
+	if err := os.WriteFile(sourceFile, testContent, 0o644); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)
 	}
 
@@ -93,7 +93,7 @@ func TestManager_SaveAndLoad(t *testing.T) {
 
 	// Load config
 	loadDir := filepath.Join(tmpDir, "loaded")
-	if err := os.MkdirAll(loadDir, 0755); err != nil {
+	if err := os.MkdirAll(loadDir, 0o755); err != nil {
 		t.Fatalf("Failed to create load dir: %v", err)
 	}
 
@@ -138,7 +138,7 @@ func TestManager_List(t *testing.T) {
 	// Create test config files directly
 	for _, name := range []string{"config1", "config2", "config3"} {
 		configFile := filepath.Join(tmpDir, name+".config.yaml")
-		if err := os.WriteFile(configFile, []byte("test"), 0644); err != nil {
+		if err := os.WriteFile(configFile, []byte("test"), 0o644); err != nil {
 			t.Fatalf("Failed to write config: %v", err)
 		}
 	}
@@ -166,7 +166,7 @@ func TestManager_Delete(t *testing.T) {
 
 	// Create a config to delete
 	configFile := filepath.Join(tmpDir, "to-delete.config.yaml")
-	if err := os.WriteFile(configFile, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(configFile, []byte("test"), 0o644); err != nil {
 		t.Fatalf("Failed to write config: %v", err)
 	}
 
