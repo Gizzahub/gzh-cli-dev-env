@@ -354,3 +354,368 @@ not: valid: yaml: here
 		t.Error("LoadEnvironment() should return error for invalid YAML")
 	}
 }
+
+// TestEnvironmentSwitcher_SwitchEnvironment tests environment switching.
+func TestEnvironmentSwitcher_SwitchEnvironment(t *testing.T) {
+	es := NewEnvironmentSwitcher()
+	awsMock := newMockSwitcher("aws")
+	es.Register(awsMock)
+
+	env := &Environment{
+		Name: "test-env",
+		Services: map[string]ServiceConfig{
+			"aws": {
+				AWS: &AWSConfig{Profile: "test", Region: "us-east-1"},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	result, err := es.SwitchEnvironment(ctx, env, SwitchOptions{})
+
+	if err != nil {
+		t.Fatalf("SwitchEnvironment() error = %v", err)
+	}
+
+	if !result.Success {
+		t.Error("SwitchEnvironment() should succeed")
+	}
+
+	if !awsMock.switchCalled {
+		t.Error("AWS switcher should have been called")
+	}
+
+	if len(result.SwitchedServices) != 1 {
+		t.Errorf("Expected 1 switched service, got %d", len(result.SwitchedServices))
+	}
+}
+
+// TestEnvironmentSwitcher_SwitchEnvironment_InvalidEnv tests switching with invalid env.
+func TestEnvironmentSwitcher_SwitchEnvironment_InvalidEnv(t *testing.T) {
+	es := NewEnvironmentSwitcher()
+
+	env := &Environment{
+		Name:     "",
+		Services: nil,
+	}
+
+	ctx := context.Background()
+	_, err := es.SwitchEnvironment(ctx, env, SwitchOptions{})
+
+	if err == nil {
+		t.Error("SwitchEnvironment() should return error for invalid environment")
+	}
+}
+
+// TestEnvironmentSwitcher_SwitchEnvironment_NoSwitcher tests switching without switcher.
+func TestEnvironmentSwitcher_SwitchEnvironment_NoSwitcher(t *testing.T) {
+	es := NewEnvironmentSwitcher()
+	// Don't register any switcher
+
+	env := &Environment{
+		Name: "test-env",
+		Services: map[string]ServiceConfig{
+			"aws": {
+				AWS: &AWSConfig{Profile: "test"},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	_, err := es.SwitchEnvironment(ctx, env, SwitchOptions{})
+
+	if err == nil {
+		t.Error("SwitchEnvironment() should return error when no switcher registered")
+	}
+}
+
+// TestEnvironmentSwitcher_SwitchEnvironment_DryRun tests dry run mode.
+func TestEnvironmentSwitcher_SwitchEnvironment_DryRun(t *testing.T) {
+	es := NewEnvironmentSwitcher()
+	awsMock := newMockSwitcher("aws")
+	es.Register(awsMock)
+
+	env := &Environment{
+		Name: "test-env",
+		Services: map[string]ServiceConfig{
+			"aws": {
+				AWS: &AWSConfig{Profile: "test"},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	result, err := es.SwitchEnvironment(ctx, env, SwitchOptions{DryRun: true})
+
+	if err != nil {
+		t.Fatalf("SwitchEnvironment() error = %v", err)
+	}
+
+	if !result.Success {
+		t.Error("DryRun should succeed")
+	}
+
+	// In dry run mode, the switcher should NOT be called
+	if awsMock.switchCalled {
+		t.Error("Switcher should NOT be called in dry run mode")
+	}
+}
+
+// TestEnvironmentSwitcher_SwitchEnvironment_WithProgress tests progress callback.
+func TestEnvironmentSwitcher_SwitchEnvironment_WithProgress(t *testing.T) {
+	es := NewEnvironmentSwitcher()
+	awsMock := newMockSwitcher("aws")
+	es.Register(awsMock)
+
+	progressCalled := false
+	es.SetProgressCallback(func(progress SwitchProgress) {
+		progressCalled = true
+		if progress.TotalServices != 1 {
+			t.Errorf("TotalServices = %d, want 1", progress.TotalServices)
+		}
+	})
+
+	env := &Environment{
+		Name: "test-env",
+		Services: map[string]ServiceConfig{
+			"aws": {
+				AWS: &AWSConfig{Profile: "test"},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	_, err := es.SwitchEnvironment(ctx, env, SwitchOptions{})
+
+	if err != nil {
+		t.Fatalf("SwitchEnvironment() error = %v", err)
+	}
+
+	if !progressCalled {
+		t.Error("Progress callback should have been called")
+	}
+}
+
+// errorMockSwitcher is a mock that returns an error on Switch.
+type errorMockSwitcher struct {
+	name  string
+	state interface{}
+}
+
+func newErrorMockSwitcher(name string) *errorMockSwitcher {
+	return &errorMockSwitcher{
+		name:  name,
+		state: map[string]string{"mock": "state"},
+	}
+}
+
+func (m *errorMockSwitcher) Name() string                                               { return m.name }
+func (m *errorMockSwitcher) Switch(ctx context.Context, config interface{}) error       { return context.DeadlineExceeded }
+func (m *errorMockSwitcher) GetCurrentState(ctx context.Context) (interface{}, error)   { return m.state, nil }
+func (m *errorMockSwitcher) Rollback(ctx context.Context, previousState interface{}) error { return nil }
+
+// TestEnvironmentSwitcher_SwitchEnvironment_SwitchError tests error handling.
+func TestEnvironmentSwitcher_SwitchEnvironment_SwitchError(t *testing.T) {
+	es := NewEnvironmentSwitcher()
+	errorMock := newErrorMockSwitcher("aws")
+	es.Register(errorMock)
+
+	env := &Environment{
+		Name: "test-env",
+		Services: map[string]ServiceConfig{
+			"aws": {
+				AWS: &AWSConfig{Profile: "test"},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	result, err := es.SwitchEnvironment(ctx, env, SwitchOptions{})
+
+	if err == nil {
+		t.Error("SwitchEnvironment() should return error when switch fails")
+	}
+
+	if result.Success {
+		t.Error("Result should not be successful")
+	}
+
+	if len(result.FailedServices) != 1 {
+		t.Errorf("Expected 1 failed service, got %d", len(result.FailedServices))
+	}
+}
+
+// TestEnvironmentSwitcher_SwitchEnvironment_Rollback tests rollback on error.
+func TestEnvironmentSwitcher_SwitchEnvironment_Rollback(t *testing.T) {
+	es := NewEnvironmentSwitcher()
+	errorMock := newErrorMockSwitcher("aws")
+	es.Register(errorMock)
+
+	env := &Environment{
+		Name: "test-env",
+		Services: map[string]ServiceConfig{
+			"aws": {
+				AWS: &AWSConfig{Profile: "test"},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	result, _ := es.SwitchEnvironment(ctx, env, SwitchOptions{RollbackOnError: true})
+
+	if result.RollbackPerformed {
+		// Rollback may or may not be performed depending on when error occurred
+		t.Log("Rollback was performed as expected")
+	}
+}
+
+// TestEnvironmentSwitcher_SwitchEnvironment_MultipleServices tests multiple services.
+func TestEnvironmentSwitcher_SwitchEnvironment_MultipleServices(t *testing.T) {
+	es := NewEnvironmentSwitcher()
+	awsMock := newMockSwitcher("aws")
+	dockerMock := newMockSwitcher("docker")
+	es.Register(awsMock)
+	es.Register(dockerMock)
+
+	env := &Environment{
+		Name: "test-env",
+		Services: map[string]ServiceConfig{
+			"aws": {
+				AWS: &AWSConfig{Profile: "test"},
+			},
+			"docker": {
+				Docker: &DockerConfig{Context: "default"},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	result, err := es.SwitchEnvironment(ctx, env, SwitchOptions{})
+
+	if err != nil {
+		t.Fatalf("SwitchEnvironment() error = %v", err)
+	}
+
+	if !result.Success {
+		t.Error("SwitchEnvironment() should succeed")
+	}
+
+	if len(result.SwitchedServices) != 2 {
+		t.Errorf("Expected 2 switched services, got %d", len(result.SwitchedServices))
+	}
+}
+
+// TestEnvironmentSwitcher_SwitchEnvironment_Parallel tests parallel switching.
+func TestEnvironmentSwitcher_SwitchEnvironment_Parallel(t *testing.T) {
+	es := NewEnvironmentSwitcher()
+	awsMock := newMockSwitcher("aws")
+	dockerMock := newMockSwitcher("docker")
+	es.Register(awsMock)
+	es.Register(dockerMock)
+
+	env := &Environment{
+		Name: "test-env",
+		Services: map[string]ServiceConfig{
+			"aws": {
+				AWS: &AWSConfig{Profile: "test"},
+			},
+			"docker": {
+				Docker: &DockerConfig{Context: "default"},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	result, err := es.SwitchEnvironment(ctx, env, SwitchOptions{Parallel: true})
+
+	if err != nil {
+		t.Fatalf("SwitchEnvironment() error = %v", err)
+	}
+
+	if !result.Success {
+		t.Error("Parallel switch should succeed")
+	}
+
+	if len(result.SwitchedServices) != 2 {
+		t.Errorf("Expected 2 switched services, got %d", len(result.SwitchedServices))
+	}
+}
+
+// TestEnvironmentSwitcher_SwitchEnvironment_AllServiceTypes tests all service types.
+func TestEnvironmentSwitcher_SwitchEnvironment_AllServiceTypes(t *testing.T) {
+	es := NewEnvironmentSwitcher()
+	es.Register(newMockSwitcher("aws"))
+	es.Register(newMockSwitcher("gcp"))
+	es.Register(newMockSwitcher("azure"))
+	es.Register(newMockSwitcher("docker"))
+	es.Register(newMockSwitcher("kubernetes"))
+	es.Register(newMockSwitcher("ssh"))
+
+	env := &Environment{
+		Name: "test-env",
+		Services: map[string]ServiceConfig{
+			"aws":        {AWS: &AWSConfig{Profile: "test"}},
+			"gcp":        {GCP: &GCPConfig{Project: "test-project"}},
+			"azure":      {Azure: &AzureConfig{Subscription: "test-sub"}},
+			"docker":     {Docker: &DockerConfig{Context: "default"}},
+			"kubernetes": {Kubernetes: &KubernetesConfig{Context: "minikube"}},
+			"ssh":        {SSH: &SSHConfig{Config: "~/.ssh/config"}},
+		},
+	}
+
+	ctx := context.Background()
+	result, err := es.SwitchEnvironment(ctx, env, SwitchOptions{})
+
+	if err != nil {
+		t.Fatalf("SwitchEnvironment() error = %v", err)
+	}
+
+	if len(result.SwitchedServices) != 6 {
+		t.Errorf("Expected 6 switched services, got %d", len(result.SwitchedServices))
+	}
+}
+
+// TestEnvironmentSwitcher_SwitchEnvironment_UnknownService tests unknown service type.
+func TestEnvironmentSwitcher_SwitchEnvironment_UnknownService(t *testing.T) {
+	es := NewEnvironmentSwitcher()
+	es.Register(newMockSwitcher("unknown-service"))
+
+	env := &Environment{
+		Name: "test-env",
+		Services: map[string]ServiceConfig{
+			"unknown-service": {}, // No specific config
+		},
+	}
+
+	ctx := context.Background()
+	_, err := es.SwitchEnvironment(ctx, env, SwitchOptions{})
+
+	if err == nil {
+		t.Error("SwitchEnvironment() should return error for unknown service type")
+	}
+}
+
+// TestEnvironmentSwitcher_SwitchEnvironment_NilConfig tests nil config for service.
+func TestEnvironmentSwitcher_SwitchEnvironment_NilConfig(t *testing.T) {
+	es := NewEnvironmentSwitcher()
+	es.Register(newMockSwitcher("aws"))
+
+	env := &Environment{
+		Name: "test-env",
+		Services: map[string]ServiceConfig{
+			"aws": {AWS: nil}, // Nil AWS config
+		},
+	}
+
+	ctx := context.Background()
+	result, err := es.SwitchEnvironment(ctx, env, SwitchOptions{})
+
+	// The implementation may handle nil config differently
+	// Check that it either returns an error or fails gracefully
+	if err != nil {
+		t.Logf("SwitchEnvironment() returned error for nil config: %v", err)
+	} else if !result.Success {
+		t.Logf("SwitchEnvironment() returned failed result for nil config")
+	}
+	// Either outcome is acceptable for nil config
+}

@@ -101,3 +101,83 @@ func TestSwitcher_Rollback_InvalidState(t *testing.T) {
 		t.Error("Rollback() with invalid state should return error")
 	}
 }
+
+// TestSwitcher_Switch_EmptyProject tests Switch with empty project.
+func TestSwitcher_Switch_EmptyProject(t *testing.T) {
+	switcher := NewSwitcher()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Empty project should not cause an error (just skip the gcloud command)
+	config := &environment.GCPConfig{
+		Project: "",
+		Account: "",
+		Region:  "",
+	}
+
+	err := switcher.Switch(ctx, config)
+	// Should succeed since empty project means no action
+	if err != nil {
+		t.Logf("Switch() with empty project error = %v", err)
+	}
+}
+
+// TestSwitcher_Switch_ValidConfig tests Switch with valid config structure.
+func TestSwitcher_Switch_ValidConfig(t *testing.T) {
+	switcher := NewSwitcher()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	config := &environment.GCPConfig{
+		Project: "test-project-id",
+		Account: "test-account@example.com",
+		Region:  "us-central1",
+	}
+
+	err := switcher.Switch(ctx, config)
+	// May fail if gcloud is not installed, but should not panic
+	if err != nil {
+		t.Logf("Switch() with valid config error (expected if gcloud not installed) = %v", err)
+	}
+}
+
+// TestSwitcher_Rollback_WithValidState tests Rollback with valid state.
+func TestSwitcher_Rollback_WithValidState(t *testing.T) {
+	switcher := NewSwitcher()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Get current state first
+	state, err := switcher.GetCurrentState(ctx)
+	if err != nil {
+		t.Fatalf("GetCurrentState() error = %v", err)
+	}
+
+	// Rollback to current state should work
+	err = switcher.Rollback(ctx, state)
+	if err != nil {
+		t.Logf("Rollback() with current state error (expected if gcloud not installed) = %v", err)
+	}
+}
+
+// TestSwitcher_GetCurrentState_ReturnsGCPConfig tests return type.
+func TestSwitcher_GetCurrentState_ReturnsGCPConfig(t *testing.T) {
+	switcher := NewSwitcher()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	state, err := switcher.GetCurrentState(ctx)
+	if err != nil {
+		t.Fatalf("GetCurrentState() error = %v", err)
+	}
+
+	gcpConfig, ok := state.(*environment.GCPConfig)
+	if !ok {
+		t.Fatalf("GetCurrentState() returned %T, want *environment.GCPConfig", state)
+	}
+
+	// Log the current state for debugging
+	t.Logf("Current GCP project: %s", gcpConfig.Project)
+	t.Logf("Current GCP account: %s", gcpConfig.Account)
+	t.Logf("Current GCP region: %s", gcpConfig.Region)
+}

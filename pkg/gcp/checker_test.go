@@ -94,5 +94,97 @@ func TestChecker_CheckHealth_ReturnsValidHealth(t *testing.T) {
 func TestChecker_isCLIAvailable(t *testing.T) {
 	checker := NewChecker()
 	// Just verify it doesn't panic and returns a boolean
-	_ = checker.isCLIAvailable()
+	result := checker.isCLIAvailable()
+	t.Logf("isCLIAvailable() = %v", result)
+}
+
+// TestChecker_CheckHealth_HasTimestamp tests CheckHealth sets timestamp correctly.
+func TestChecker_CheckHealth_HasTimestamp(t *testing.T) {
+	checker := NewChecker()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	before := time.Now()
+	health, err := checker.CheckHealth(ctx)
+	after := time.Now()
+
+	if err != nil {
+		t.Fatalf("CheckHealth() error = %v", err)
+	}
+
+	if health.CheckedAt.Before(before) || health.CheckedAt.After(after) {
+		t.Errorf("health.CheckedAt = %v, should be between %v and %v", health.CheckedAt, before, after)
+	}
+
+	if health.Duration <= 0 {
+		t.Errorf("health.Duration = %v, should be positive", health.Duration)
+	}
+}
+
+// TestChecker_CheckStatus_DetailsNotNil tests that details map is initialized.
+func TestChecker_CheckStatus_DetailsNotNil(t *testing.T) {
+	checker := NewChecker()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	st, err := checker.CheckStatus(ctx)
+	if err != nil {
+		t.Fatalf("CheckStatus() error = %v", err)
+	}
+
+	if st.Details == nil {
+		t.Error("status.Details should not be nil")
+	}
+}
+
+// TestChecker_CheckStatus_HasLastUsed tests that LastUsed is set.
+func TestChecker_CheckStatus_HasLastUsed(t *testing.T) {
+	checker := NewChecker()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	before := time.Now()
+	st, err := checker.CheckStatus(ctx)
+	after := time.Now()
+
+	if err != nil {
+		t.Fatalf("CheckStatus() error = %v", err)
+	}
+
+	if st.LastUsed.Before(before) || st.LastUsed.After(after) {
+		t.Errorf("status.LastUsed = %v, should be between %v and %v", st.LastUsed, before, after)
+	}
+}
+
+// TestChecker_CheckHealth_HasDetails tests that health details are populated.
+func TestChecker_CheckHealth_HasDetails(t *testing.T) {
+	checker := NewChecker()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	health, err := checker.CheckHealth(ctx)
+	if err != nil {
+		t.Fatalf("CheckHealth() error = %v", err)
+	}
+
+	if health.Details == nil {
+		t.Error("health.Details should not be nil")
+	}
+}
+
+// TestChecker_CheckStatus_ContextCanceled tests behavior with canceled context.
+func TestChecker_CheckStatus_ContextCanceled(t *testing.T) {
+	checker := NewChecker()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	st, err := checker.CheckStatus(ctx)
+
+	// Should return a valid status even with canceled context
+	if err != nil {
+		t.Logf("CheckStatus() with canceled context error = %v", err)
+	}
+	if st == nil {
+		t.Error("CheckStatus() should return non-nil status even with canceled context")
+	}
 }
