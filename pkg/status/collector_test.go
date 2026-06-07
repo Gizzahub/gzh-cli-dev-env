@@ -13,14 +13,14 @@ import (
 
 // mockChecker is a mock implementation of ServiceChecker for testing.
 type mockChecker struct {
-	name         string
-	status       *ServiceStatus
-	statusErr    error
-	health       *HealthStatus
-	healthErr    error
-	checkCount   atomic.Int32
-	healthCount  atomic.Int32
-	delay        time.Duration
+	name        string
+	status      *ServiceStatus
+	statusErr   error
+	health      *HealthStatus
+	healthErr   error
+	checkCount  atomic.Int32
+	healthCount atomic.Int32
+	delay       time.Duration
 }
 
 func newMockChecker(name string) *mockChecker {
@@ -34,7 +34,7 @@ func newMockChecker(name string) *mockChecker {
 		health: &HealthStatus{
 			Status:    StatusActive,
 			CheckedAt: time.Now(),
-			Details:   make(map[string]interface{}),
+			Details:   make(map[string]any),
 		},
 	}
 }

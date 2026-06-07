@@ -5,6 +5,7 @@ package environment
 
 import (
 	"context"
+	"slices"
 	"testing"
 )
 
@@ -12,9 +13,9 @@ import (
 type mockSwitcher struct {
 	name         string
 	switchCalled bool
-	switchConfig interface{}
+	switchConfig any
 	switchError  error
-	state        interface{}
+	state        any
 }
 
 func newMockSwitcher(name string) *mockSwitcher {
@@ -28,17 +29,17 @@ func (m *mockSwitcher) Name() string {
 	return m.name
 }
 
-func (m *mockSwitcher) Switch(ctx context.Context, config interface{}) error {
+func (m *mockSwitcher) Switch(ctx context.Context, config any) error {
 	m.switchCalled = true
 	m.switchConfig = config
 	return m.switchError
 }
 
-func (m *mockSwitcher) GetCurrentState(ctx context.Context) (interface{}, error) {
+func (m *mockSwitcher) GetCurrentState(ctx context.Context) (any, error) {
 	return m.state, nil
 }
 
-func (m *mockSwitcher) Rollback(ctx context.Context, previousState interface{}) error {
+func (m *mockSwitcher) Rollback(ctx context.Context, previousState any) error {
 	return nil
 }
 
@@ -62,13 +63,7 @@ func TestEnvironmentSwitcher_RegisterServiceSwitcher(t *testing.T) {
 	es.RegisterServiceSwitcher("test-service", mock)
 
 	services := es.GetAvailableServices()
-	found := false
-	for _, s := range services {
-		if s == "test-service" {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(services, "test-service")
 
 	if !found {
 		t.Error("RegisterServiceSwitcher did not register the service")
@@ -83,13 +78,7 @@ func TestEnvironmentSwitcher_Register(t *testing.T) {
 	es.Register(mock)
 
 	services := es.GetAvailableServices()
-	found := false
-	for _, s := range services {
-		if s == "auto-named-service" {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(services, "auto-named-service")
 
 	if !found {
 		t.Error("Register did not register the service using its name")
@@ -499,7 +488,7 @@ func TestEnvironmentSwitcher_SwitchEnvironment_WithProgress(t *testing.T) {
 // errorMockSwitcher is a mock that returns an error on Switch.
 type errorMockSwitcher struct {
 	name  string
-	state interface{}
+	state any
 }
 
 func newErrorMockSwitcher(name string) *errorMockSwitcher {
@@ -509,10 +498,12 @@ func newErrorMockSwitcher(name string) *errorMockSwitcher {
 	}
 }
 
-func (m *errorMockSwitcher) Name() string                                               { return m.name }
-func (m *errorMockSwitcher) Switch(ctx context.Context, config interface{}) error       { return context.DeadlineExceeded }
-func (m *errorMockSwitcher) GetCurrentState(ctx context.Context) (interface{}, error)   { return m.state, nil }
-func (m *errorMockSwitcher) Rollback(ctx context.Context, previousState interface{}) error { return nil }
+func (m *errorMockSwitcher) Name() string { return m.name }
+func (m *errorMockSwitcher) Switch(ctx context.Context, config any) error {
+	return context.DeadlineExceeded
+}
+func (m *errorMockSwitcher) GetCurrentState(ctx context.Context) (any, error)      { return m.state, nil }
+func (m *errorMockSwitcher) Rollback(ctx context.Context, previousState any) error { return nil }
 
 // TestEnvironmentSwitcher_SwitchEnvironment_SwitchError tests error handling.
 func TestEnvironmentSwitcher_SwitchEnvironment_SwitchError(t *testing.T) {

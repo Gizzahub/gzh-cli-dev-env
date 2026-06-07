@@ -24,7 +24,7 @@ func (s *Switcher) Name() string {
 }
 
 // Switch switches to the specified SSH configuration.
-func (s *Switcher) Switch(ctx context.Context, config interface{}) error {
+func (s *Switcher) Switch(ctx context.Context, config any) error {
 	sshConfig, ok := config.(*environment.SSHConfig)
 	if !ok {
 		return fmt.Errorf("invalid SSH configuration type")
@@ -42,7 +42,7 @@ func (s *Switcher) Switch(ctx context.Context, config interface{}) error {
 }
 
 // GetCurrentState retrieves the current SSH configuration state.
-func (s *Switcher) GetCurrentState(ctx context.Context) (interface{}, error) {
+func (s *Switcher) GetCurrentState(ctx context.Context) (any, error) {
 	// Get current SSH configuration (simplified)
 	return &environment.SSHConfig{
 		Config: "default",
@@ -50,6 +50,6 @@ func (s *Switcher) GetCurrentState(ctx context.Context) (interface{}, error) {
 }
 
 // Rollback rolls back to the previous SSH configuration.
-func (s *Switcher) Rollback(ctx context.Context, previousState interface{}) error {
+func (s *Switcher) Rollback(ctx context.Context, previousState any) error {
 	return s.Switch(ctx, previousState)
 }

@@ -26,7 +26,7 @@ func (k *Switcher) Name() string {
 }
 
 // Switch switches to the specified Kubernetes configuration.
-func (k *Switcher) Switch(ctx context.Context, config interface{}) error {
+func (k *Switcher) Switch(ctx context.Context, config any) error {
 	kubernetesConfig, ok := config.(*environment.KubernetesConfig)
 	if !ok {
 		return fmt.Errorf("invalid Kubernetes configuration type")
@@ -52,7 +52,7 @@ func (k *Switcher) Switch(ctx context.Context, config interface{}) error {
 }
 
 // GetCurrentState retrieves the current Kubernetes configuration state.
-func (k *Switcher) GetCurrentState(ctx context.Context) (interface{}, error) {
+func (k *Switcher) GetCurrentState(ctx context.Context) (any, error) {
 	// Get current Kubernetes context
 	cmd := exec.CommandContext(ctx, "kubectl", "config", "current-context")
 	contextOutput, _ := cmd.Output()
@@ -68,6 +68,6 @@ func (k *Switcher) GetCurrentState(ctx context.Context) (interface{}, error) {
 }
 
 // Rollback rolls back to the previous Kubernetes configuration.
-func (k *Switcher) Rollback(ctx context.Context, previousState interface{}) error {
+func (k *Switcher) Rollback(ctx context.Context, previousState any) error {
 	return k.Switch(ctx, previousState)
 }

@@ -15,12 +15,12 @@ type ServiceSwitcher interface {
 
 	// Switch switches the service to the specified configuration.
 	// The config parameter type depends on the service implementation.
-	Switch(ctx context.Context, config interface{}) error
+	Switch(ctx context.Context, config any) error
 
 	// GetCurrentState returns the current state of the service.
 	// This state can be used for rollback operations.
-	GetCurrentState(ctx context.Context) (interface{}, error)
+	GetCurrentState(ctx context.Context) (any, error)
 
 	// Rollback restores the service to a previous state.
-	Rollback(ctx context.Context, previousState interface{}) error
+	Rollback(ctx context.Context, previousState any) error
 }

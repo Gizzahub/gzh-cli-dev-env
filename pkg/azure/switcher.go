@@ -26,7 +26,7 @@ func (a *Switcher) Name() string {
 }
 
 // Switch switches to the specified Azure configuration.
-func (a *Switcher) Switch(ctx context.Context, config interface{}) error {
+func (a *Switcher) Switch(ctx context.Context, config any) error {
 	azureConfig, ok := config.(*environment.AzureConfig)
 	if !ok {
 		return fmt.Errorf("invalid Azure configuration type")
@@ -44,7 +44,7 @@ func (a *Switcher) Switch(ctx context.Context, config interface{}) error {
 }
 
 // GetCurrentState retrieves the current Azure configuration state.
-func (a *Switcher) GetCurrentState(ctx context.Context) (interface{}, error) {
+func (a *Switcher) GetCurrentState(ctx context.Context) (any, error) {
 	// Get current Azure subscription
 	cmd := exec.CommandContext(ctx, "az", "account", "show", "--query", "id", "-o", "tsv")
 	subscriptionOutput, _ := cmd.Output()
@@ -60,6 +60,6 @@ func (a *Switcher) GetCurrentState(ctx context.Context) (interface{}, error) {
 }
 
 // Rollback rolls back to the previous Azure configuration.
-func (a *Switcher) Rollback(ctx context.Context, previousState interface{}) error {
+func (a *Switcher) Rollback(ctx context.Context, previousState any) error {
 	return a.Switch(ctx, previousState)
 }

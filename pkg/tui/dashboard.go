@@ -191,10 +191,7 @@ func (m *DashboardModel) renderHeader() string {
 	titleStyle := TitleStyle.Width(m.width - 2).Align(lipgloss.Center)
 	headerStyle := HeaderStyle.Width(m.width - 2)
 
-	padding := m.width - len(env) - len(updated) - 4
-	if padding < 0 {
-		padding = 0
-	}
+	padding := max(m.width-len(env)-len(updated)-4, 0)
 
 	headerContent := lipgloss.JoinHorizontal(
 		lipgloss.Left,
@@ -329,13 +326,11 @@ func (m *DashboardModel) updateTableSize() {
 	}
 
 	// Adjust table height
-	availableHeight := m.height - 8 // Reserve space for header, footer, help
-	if availableHeight < 5 {
-		availableHeight = 5
-	}
-	if availableHeight > 15 {
-		availableHeight = 15
-	}
+	availableHeight := min(
+		// Reserve space for header, footer, help
+		max(
+
+			m.height-8, 5), 15)
 
 	m.table.SetHeight(availableHeight)
 }

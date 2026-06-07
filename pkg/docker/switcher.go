@@ -26,7 +26,7 @@ func (d *Switcher) Name() string {
 }
 
 // Switch switches to the specified Docker configuration.
-func (d *Switcher) Switch(ctx context.Context, config interface{}) error {
+func (d *Switcher) Switch(ctx context.Context, config any) error {
 	dockerConfig, ok := config.(*environment.DockerConfig)
 	if !ok {
 		return fmt.Errorf("invalid Docker configuration type")
@@ -44,7 +44,7 @@ func (d *Switcher) Switch(ctx context.Context, config interface{}) error {
 }
 
 // GetCurrentState retrieves the current Docker configuration state.
-func (d *Switcher) GetCurrentState(ctx context.Context) (interface{}, error) {
+func (d *Switcher) GetCurrentState(ctx context.Context) (any, error) {
 	// Get current Docker context
 	cmd := exec.CommandContext(ctx, "docker", "context", "show")
 	contextOutput, _ := cmd.Output()
@@ -55,6 +55,6 @@ func (d *Switcher) GetCurrentState(ctx context.Context) (interface{}, error) {
 }
 
 // Rollback rolls back to the previous Docker configuration.
-func (d *Switcher) Rollback(ctx context.Context, previousState interface{}) error {
+func (d *Switcher) Rollback(ctx context.Context, previousState any) error {
 	return d.Switch(ctx, previousState)
 }

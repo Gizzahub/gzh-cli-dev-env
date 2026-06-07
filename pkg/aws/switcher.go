@@ -26,7 +26,7 @@ func (a *Switcher) Name() string {
 }
 
 // Switch switches to the specified AWS configuration.
-func (a *Switcher) Switch(ctx context.Context, config interface{}) error {
+func (a *Switcher) Switch(ctx context.Context, config any) error {
 	awsConfig, ok := config.(*environment.AWSConfig)
 	if !ok {
 		return fmt.Errorf("invalid AWS configuration type")
@@ -56,7 +56,7 @@ func (a *Switcher) Switch(ctx context.Context, config interface{}) error {
 }
 
 // GetCurrentState retrieves the current AWS configuration state.
-func (a *Switcher) GetCurrentState(ctx context.Context) (interface{}, error) {
+func (a *Switcher) GetCurrentState(ctx context.Context) (any, error) {
 	// Get current AWS profile
 	cmd := exec.CommandContext(ctx, "aws", "configure", "get", "profile")
 	profileOutput, _ := cmd.Output()
@@ -72,6 +72,6 @@ func (a *Switcher) GetCurrentState(ctx context.Context) (interface{}, error) {
 }
 
 // Rollback rolls back to the previous AWS configuration.
-func (a *Switcher) Rollback(ctx context.Context, previousState interface{}) error {
+func (a *Switcher) Rollback(ctx context.Context, previousState any) error {
 	return a.Switch(ctx, previousState)
 }

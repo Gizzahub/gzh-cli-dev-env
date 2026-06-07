@@ -62,7 +62,7 @@ func TestGetStatusIcon(t *testing.T) {
 func TestColors(t *testing.T) {
 	colors := []struct {
 		name  string
-		color interface{}
+		color any
 	}{
 		{"ColorPrimary", ColorPrimary},
 		{"ColorSecondary", ColorSecondary},

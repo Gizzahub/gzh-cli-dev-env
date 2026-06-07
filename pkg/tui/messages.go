@@ -35,7 +35,7 @@ type (
 	// NavigationMsg represents navigation between views.
 	NavigationMsg struct {
 		View ViewType
-		Data interface{}
+		Data any
 	}
 
 	// ServiceSelectedMsg represents a service being selected.

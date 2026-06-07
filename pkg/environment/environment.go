@@ -6,6 +6,7 @@ package environment
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"gopkg.in/yaml.v3"
 )
@@ -46,11 +47,8 @@ func (e *Environment) Validate() error {
 	}
 
 	// Validate dependencies
-	for _, dep := range e.Dependencies {
-		// Dependencies are parsed later, just check they're not empty
-		if dep == "" {
-			return fmt.Errorf("empty dependency string found")
-		}
+	if slices.Contains(e.Dependencies, "") {
+		return fmt.Errorf("empty dependency string found")
 	}
 
 	return nil

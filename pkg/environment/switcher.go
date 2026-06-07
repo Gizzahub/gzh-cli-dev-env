@@ -66,7 +66,7 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 		Errors:           []SwitchError{},
 	}
 
-	previousStates := make(map[string]interface{})
+	previousStates := make(map[string]any)
 
 	if err := es.executeHooks(ctx, env.PreHooks, "pre-hook"); err != nil {
 		return &SwitchResult{
@@ -129,7 +129,7 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 }
 
 // switchSingleService switches a single service.
-func (es *EnvironmentSwitcher) switchSingleService(ctx context.Context, env *Environment, serviceName string, previousStates map[string]interface{}, result *SwitchResult, options SwitchOptions) error {
+func (es *EnvironmentSwitcher) switchSingleService(ctx context.Context, env *Environment, serviceName string, previousStates map[string]any, result *SwitchResult, options SwitchOptions) error {
 	es.mu.RLock()
 	switcher, exists := es.serviceSwitchers[serviceName]
 	es.mu.RUnlock()
@@ -149,7 +149,7 @@ func (es *EnvironmentSwitcher) switchSingleService(ctx context.Context, env *Env
 	}
 	previousStates[serviceName] = currentState
 
-	var config interface{}
+	var config any
 	switch serviceName {
 	case "aws":
 		config = serviceConfig.AWS
@@ -188,7 +188,7 @@ func (es *EnvironmentSwitcher) switchSingleService(ctx context.Context, env *Env
 }
 
 // switchServicesParallel switches multiple services in parallel.
-func (es *EnvironmentSwitcher) switchServicesParallel(ctx context.Context, env *Environment, serviceNames []string, previousStates map[string]interface{}, result *SwitchResult, options SwitchOptions) error {
+func (es *EnvironmentSwitcher) switchServicesParallel(ctx context.Context, env *Environment, serviceNames []string, previousStates map[string]any, result *SwitchResult, options SwitchOptions) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(serviceNames))
 
@@ -218,7 +218,7 @@ func (es *EnvironmentSwitcher) switchServicesParallel(ctx context.Context, env *
 }
 
 // rollbackServices rolls back services to their previous states.
-func (es *EnvironmentSwitcher) rollbackServices(ctx context.Context, previousStates map[string]interface{}, result *SwitchResult) {
+func (es *EnvironmentSwitcher) rollbackServices(ctx context.Context, previousStates map[string]any, result *SwitchResult) {
 	var rollbackErrors []string
 
 	for serviceName, previousState := range previousStates {

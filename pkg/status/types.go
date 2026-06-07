@@ -49,11 +49,11 @@ type CredentialStatus struct {
 
 // HealthStatus represents detailed health check information.
 type HealthStatus struct {
-	Status    StatusType             `json:"status"`
-	Message   string                 `json:"message,omitempty"`
-	CheckedAt time.Time              `json:"checkedAt"`
-	Duration  time.Duration          `json:"duration"`
-	Details   map[string]interface{} `json:"details,omitempty"`
+	Status    StatusType     `json:"status"`
+	Message   string         `json:"message,omitempty"`
+	CheckedAt time.Time      `json:"checkedAt"`
+	Duration  time.Duration  `json:"duration"`
+	Details   map[string]any `json:"details,omitempty"`
 }
 
 // StatusOptions configures how status information is collected.

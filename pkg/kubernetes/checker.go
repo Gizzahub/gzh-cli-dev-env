@@ -94,7 +94,7 @@ func (k *Checker) CheckHealth(ctx context.Context) (*status.HealthStatus, error)
 	health := &status.HealthStatus{
 		Status:    status.StatusUnknown,
 		CheckedAt: start,
-		Details:   make(map[string]interface{}),
+		Details:   make(map[string]any),
 	}
 
 	// Test cluster connectivity with kubectl cluster-info

@@ -26,7 +26,7 @@ func (g *Switcher) Name() string {
 }
 
 // Switch switches to the specified GCP configuration.
-func (g *Switcher) Switch(ctx context.Context, config interface{}) error {
+func (g *Switcher) Switch(ctx context.Context, config any) error {
 	gcpConfig, ok := config.(*environment.GCPConfig)
 	if !ok {
 		return fmt.Errorf("invalid GCP configuration type")
@@ -60,7 +60,7 @@ func (g *Switcher) Switch(ctx context.Context, config interface{}) error {
 }
 
 // GetCurrentState retrieves the current GCP configuration state.
-func (g *Switcher) GetCurrentState(ctx context.Context) (interface{}, error) {
+func (g *Switcher) GetCurrentState(ctx context.Context) (any, error) {
 	// Get current GCP project
 	cmd := exec.CommandContext(ctx, "gcloud", "config", "get-value", "project")
 	projectOutput, _ := cmd.Output()
@@ -81,6 +81,6 @@ func (g *Switcher) GetCurrentState(ctx context.Context) (interface{}, error) {
 }
 
 // Rollback rolls back to the previous GCP configuration.
-func (g *Switcher) Rollback(ctx context.Context, previousState interface{}) error {
+func (g *Switcher) Rollback(ctx context.Context, previousState any) error {
 	return g.Switch(ctx, previousState)
 }

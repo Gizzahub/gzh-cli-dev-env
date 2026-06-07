@@ -5,6 +5,7 @@ package environment
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 )
 
@@ -161,9 +162,7 @@ func (dr *DependencyResolver) topologicalSort(graph map[string][]string, inDegre
 	level := 0
 	remaining := make(map[string]int)
 
-	for service, degree := range inDegree {
-		remaining[service] = degree
-	}
+	maps.Copy(remaining, inDegree)
 
 	for len(remaining) > 0 {
 		var currentLevel []string

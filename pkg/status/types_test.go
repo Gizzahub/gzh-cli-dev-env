@@ -86,7 +86,7 @@ func TestHealthStatus_Fields(t *testing.T) {
 		Message:   "All systems operational",
 		CheckedAt: time.Now(),
 		Duration:  100 * time.Millisecond,
-		Details:   map[string]interface{}{"api": "ok"},
+		Details:   map[string]any{"api": "ok"},
 	}
 
 	if health.Status != StatusActive {
