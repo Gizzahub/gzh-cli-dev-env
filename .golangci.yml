@@ -81,6 +81,10 @@ linters:
     goconst:
       min-len: 3
       min-occurrences: 3
+      # Table-driven fixtures repeat literals like "aws" by design. Counting them
+      # flags production code that names each service exactly once, where a constant
+      # would buy nothing.
+      ignore-tests: true
     gocritic:
       disabled-checks:
         - hugeParam
