@@ -7,7 +7,6 @@
 
 # Go environment configuration
 # Use system Go installation
-export GOEXPERIMENT := rangefunc
 
 # Detect OS-specific executable extension (e.g., .exe on Windows)
 BINEXT := $(shell go env GOEXE)
@@ -40,10 +39,12 @@ endif
 
 .PHONY: build install run bootstrap clean release-dry-run release-snapshot release-check deploy
 
-build: ## build golang binary
-	@printf "$(CYAN)Building %s...$(RESET)\n" "$(BINARY)"
-	@go build -ldflags "-X main.version=$(VERSION)" -o $(BINARY) ./cmd/gzh-git
-	@printf "$(GREEN)Built %s successfully$(RESET)\n" "$(BINARY)"
+# This repo ships a library, not a binary: there is no main package and
+# cmd/devenv is mounted by gzh-cli via NewRootCmd(). See PRODUCT.md Non-Goals.
+build: ## compile all packages (library — produces no binary)
+	@printf "$(CYAN)Building %s...$(RESET)\n" "$(projectname)"
+	@go build ./...
+	@printf "$(GREEN)Built %s successfully$(RESET)\n" "$(projectname)"
 
 
 install: build ## install golang binary
