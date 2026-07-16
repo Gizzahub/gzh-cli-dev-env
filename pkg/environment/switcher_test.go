@@ -5,6 +5,7 @@ package environment
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,11 +14,13 @@ import (
 
 // mockSwitcher is a mock implementation of ServiceSwitcher for testing.
 type mockSwitcher struct {
-	name         string
-	switchCalled bool
-	switchConfig any
-	switchError  error
-	state        any
+	name           string
+	switchCalled   bool
+	switchConfig   any
+	switchError    error
+	state          any
+	stateError     error
+	rollbackCalled bool
 }
 
 func newMockSwitcher(name string) *mockSwitcher {
@@ -38,10 +41,15 @@ func (m *mockSwitcher) Switch(ctx context.Context, config any) error {
 }
 
 func (m *mockSwitcher) GetCurrentState(ctx context.Context) (any, error) {
+	if m.stateError != nil {
+		return nil, m.stateError
+	}
+
 	return m.state, nil
 }
 
 func (m *mockSwitcher) Rollback(ctx context.Context, previousState any) error {
+	m.rollbackCalled = true
 	return nil
 }
 
@@ -515,6 +523,44 @@ func TestEnvironmentSwitcher_SwitchEnvironment_DryRunHooks(t *testing.T) {
 			}
 		}
 	})
+}
+
+// TestEnvironmentSwitcher_SwitchEnvironment_DryRunNoRollback asserts that a failure
+// during a dry run does not roll anything back. Dry run never calls Switch, so there
+// is nothing to undo, and Rollback is a real side effect on the user's machine.
+//
+// The dependency forces aws into the first group and gcp into the second, so aws is
+// already recorded in previousStates by the time gcp fails.
+func TestEnvironmentSwitcher_SwitchEnvironment_DryRunNoRollback(t *testing.T) {
+	es := NewEnvironmentSwitcher()
+	awsMock := newMockSwitcher("aws")
+	gcpMock := newMockSwitcher("gcp")
+	gcpMock.stateError = errors.New("gcloud unavailable")
+	es.Register(awsMock)
+	es.Register(gcpMock)
+
+	env := &Environment{
+		Name: "test-env",
+		Services: map[string]ServiceConfig{
+			"aws": {AWS: &AWSConfig{Profile: "test"}},
+			"gcp": {GCP: &GCPConfig{Project: "test-project"}},
+		},
+		Dependencies: []string{"aws -> gcp"},
+	}
+
+	ctx := context.Background()
+	_, err := es.SwitchEnvironment(ctx, env, SwitchOptions{DryRun: true, RollbackOnError: true})
+	if err == nil {
+		t.Fatal("SwitchEnvironment() should fail when GetCurrentState fails")
+	}
+
+	if awsMock.switchCalled {
+		t.Error("dry run must not call Switch")
+	}
+
+	if awsMock.rollbackCalled {
+		t.Error("dry run must not call Rollback: nothing was switched, so undoing it is a real side effect")
+	}
 }
 
 // TestEnvironmentSwitcher_SwitchEnvironment_WithProgress tests progress callback.

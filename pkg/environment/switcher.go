@@ -87,7 +87,7 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 		if options.Parallel && len(group.Services) > 1 {
 			if err := es.switchServicesParallel(ctx, env, group.Services, previousStates, result, options); err != nil {
 				if options.RollbackOnError {
-					es.rollbackServices(ctx, previousStates, result)
+					es.rollbackServices(ctx, previousStates, result, options)
 				}
 				result.Success = false
 				result.Duration = time.Since(startTime)
@@ -97,7 +97,7 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 			for _, serviceName := range group.Services {
 				if err := es.switchSingleService(ctx, env, serviceName, previousStates, result, options); err != nil {
 					if options.RollbackOnError {
-						es.rollbackServices(ctx, previousStates, result)
+						es.rollbackServices(ctx, previousStates, result, options)
 					}
 					result.Success = false
 					result.Duration = time.Since(startTime)
@@ -231,7 +231,16 @@ func (es *EnvironmentSwitcher) switchServicesParallel(ctx context.Context, env *
 }
 
 // rollbackServices rolls back services to their previous states.
-func (es *EnvironmentSwitcher) rollbackServices(ctx context.Context, previousStates map[string]any, result *SwitchResult) {
+//
+// A dry run never called Switch, so there is nothing to undo and Rollback would be a
+// real side effect on the user's machine. previousStates is populated even in a dry
+// run, so the guard belongs here rather than at the call sites — same reason runHooks
+// owns its own check.
+func (es *EnvironmentSwitcher) rollbackServices(ctx context.Context, previousStates map[string]any, result *SwitchResult, options SwitchOptions) {
+	if options.DryRun {
+		return
+	}
+
 	var rollbackErrors []string
 
 	for serviceName, previousState := range previousStates {
