@@ -18,7 +18,11 @@ import (
 type EnvironmentSwitcher struct {
 	serviceSwitchers map[string]ServiceSwitcher
 	progressCallback func(SwitchProgress)
-	mu               sync.RWMutex
+	// mu guards serviceSwitchers only.
+	mu sync.RWMutex
+	// stateMu guards the previousStates map and the SwitchResult slices that
+	// switchSingleService writes to, which parallel switching shares across goroutines.
+	stateMu sync.Mutex
 }
 
 // NewEnvironmentSwitcher creates a new environment switcher.
@@ -147,7 +151,10 @@ func (es *EnvironmentSwitcher) switchSingleService(ctx context.Context, env *Env
 	if err != nil {
 		return fmt.Errorf("failed to get current state for %s: %w", serviceName, err)
 	}
+
+	es.stateMu.Lock()
 	previousStates[serviceName] = currentState
+	es.stateMu.Unlock()
 
 	var config any
 	switch serviceName {
@@ -173,17 +180,23 @@ func (es *EnvironmentSwitcher) switchSingleService(ctx context.Context, env *Env
 
 	if !options.DryRun {
 		if err := switcher.Switch(ctx, config); err != nil {
+			es.stateMu.Lock()
 			result.FailedServices = append(result.FailedServices, serviceName)
 			result.Errors = append(result.Errors, SwitchError{
 				Service: serviceName,
 				Error:   err.Error(),
 				Time:    time.Now(),
 			})
+			es.stateMu.Unlock()
+
 			return fmt.Errorf("failed to switch %s: %w", serviceName, err)
 		}
 	}
 
+	es.stateMu.Lock()
 	result.SwitchedServices = append(result.SwitchedServices, serviceName)
+	es.stateMu.Unlock()
+
 	return nil
 }
 
