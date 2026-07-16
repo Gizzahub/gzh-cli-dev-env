@@ -55,7 +55,7 @@ Core principle: ServiceSwitcher interface for unified cloud/container/SSH enviro
 ├── internal/
 │   ├── exec/              # Command execution utilities
 │   └── testutil/          # Test helpers and mocks
-├── cmd/gzh-devenv/        # Optional standalone CLI
+├── cmd/devenv/        # Optional standalone CLI
 ├── go.mod
 ├── Makefile
 └── CLAUDE.md

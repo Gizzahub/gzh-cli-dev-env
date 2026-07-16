@@ -38,14 +38,7 @@ Examples:
   dev-env tui
 
   # Switch all services to a named environment
-  dev-env switch-all --env production
-
-  # Save current kubeconfig
-  dev-env kubeconfig save --name my-cluster
-
-  # Manage AWS profiles with SSO support
-  dev-env aws-profile list
-  dev-env aws-profile switch production`,
+  dev-env switch-all --env production`,
 		SilenceUsage: true,
 	}
 
