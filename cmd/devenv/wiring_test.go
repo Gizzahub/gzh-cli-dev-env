@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gizzahub/gzh-cli-dev-env/pkg/environment"
+	"github.com/gizzahub/gzh-cli-dev-env/pkg/status"
 )
 
 func TestNewRootCmd_UseAndSilence(t *testing.T) {
@@ -133,6 +134,125 @@ func TestRunStatusCmd_InvalidFormat(t *testing.T) {
 		t.Fatal("expected invalid format error")
 	}
 	if !strings.Contains(err.Error(), "invalid format") {
+		t.Errorf("error = %q", err.Error())
+	}
+}
+
+func TestRunStatusCmd_SingleCheckJSON(t *testing.T) {
+	out := captureStdout(t, func() {
+		err := runStatusCmd([]string{"azure", "ssh"}, "json", false, false, 2*time.Second, false)
+		if err != nil {
+			t.Fatalf("runStatusCmd() error = %v", err)
+		}
+	})
+	if !strings.Contains(out, "azure") && !strings.Contains(out, "ssh") {
+		t.Errorf("status output missing services: %q", out)
+	}
+}
+
+func TestRunStatusCmd_TableFormat(t *testing.T) {
+	out := captureStdout(t, func() {
+		err := runStatusCmd([]string{"kubernetes"}, "table", false, false, 2*time.Second, false)
+		if err != nil {
+			t.Fatalf("runStatusCmd() error = %v", err)
+		}
+	})
+	if out == "" {
+		t.Error("expected non-empty table output")
+	}
+}
+
+func TestRunSingleCheck_Health(t *testing.T) {
+	checkers := createServiceCheckers([]string{"azure"})
+	collector := status.NewStatusCollector(checkers, 2*time.Second)
+	formatter, err := createFormatter("yaml", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := captureStdout(t, func() {
+		if err := runSingleCheck(context.Background(), collector, formatter, true); err != nil {
+			t.Fatalf("runSingleCheck() error = %v", err)
+		}
+	})
+	if out == "" {
+		t.Error("expected yaml status output")
+	}
+}
+
+func TestRunWatchMode_ContextAlreadyDone(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	checkers := createServiceCheckers([]string{"azure"})
+	collector := status.NewStatusCollector(checkers, time.Second)
+	formatter, err := createFormatter("json", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := captureStdout(t, func() {
+		err := runWatchMode(ctx, collector, formatter, false, time.Hour)
+		if err == nil {
+			t.Fatal("expected context error from watch mode")
+		}
+	})
+	if !strings.Contains(out, "Last updated") {
+		t.Errorf("watch mode should print at least one frame: %q", out)
+	}
+}
+
+func TestConfirmSwitch_Yes(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = orig })
+	go func() {
+		_, _ = w.Write([]byte("y\n"))
+		_ = w.Close()
+	}()
+	opts := &switchAllOptions{}
+	env := &environment.Environment{
+		Name:        "prod",
+		Description: "production",
+		Services: map[string]environment.ServiceConfig{
+			"aws": {AWS: &environment.AWSConfig{Profile: "p", Region: "r"}},
+		},
+	}
+	out := captureStdout(t, func() {
+		if err := opts.confirmSwitch(env); err != nil {
+			t.Fatalf("confirmSwitch() error = %v", err)
+		}
+	})
+	if !strings.Contains(out, "prod") {
+		t.Errorf("confirm output = %q", out)
+	}
+}
+
+func TestConfirmSwitch_Cancel(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = orig })
+	go func() {
+		_, _ = w.Write([]byte("n\n"))
+		_ = w.Close()
+	}()
+	opts := &switchAllOptions{}
+	env := &environment.Environment{
+		Name: "dev",
+		Services: map[string]environment.ServiceConfig{
+			"docker": {Docker: &environment.DockerConfig{Context: "default"}},
+		},
+	}
+	err = opts.confirmSwitch(env)
+	if err == nil {
+		t.Fatal("expected cancel error")
+	}
+	if !strings.Contains(err.Error(), "canceled") {
 		t.Errorf("error = %q", err.Error())
 	}
 }
@@ -365,7 +485,7 @@ func TestRegisterDefaultSwitchers(t *testing.T) {
 
 func TestSwitchAll_Run_MissingEnv(t *testing.T) {
 	opts := &switchAllOptions{env: "missing", force: true, timeout: time.Second}
-	err := opts.run(t.Context())
+	err := opts.run(context.Background())
 	if err == nil {
 		t.Fatal("expected error for missing env")
 	}
@@ -382,6 +502,10 @@ services:
     aws:
       profile: default
       region: us-east-1
+preHooks:
+  - command: echo pre
+postHooks:
+  - command: echo post
 `)
 	if err := os.WriteFile(path, content, 0o600); err != nil {
 		t.Fatal(err)
@@ -393,7 +517,7 @@ services:
 		timeout:  time.Second,
 	}
 	out := captureStdout(t, func() {
-		if err := opts.run(t.Context()); err != nil {
+		if err := opts.run(context.Background()); err != nil {
 			t.Fatalf("run() error = %v", err)
 		}
 	})

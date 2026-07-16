@@ -76,8 +76,9 @@ G4. **Dry-run honesty**
 G5. **Test reliability**
 
 - Target: 커버리지 >= 80% (리포 CLAUDE.md의 자체 목표)
-- 현재 **60.9%** — status 98.0% · environment 82.4%만 목표 충족;
-  azure 40.0% · kubernetes 41.9% · ssh 48.9%, cmd/devenv 0%
+- 현재 **80.3%** (2026-07-17) — azure **95.6%** · kubernetes **97.1%** ·
+  ssh **88.2%** · cmd/devenv **80.4%** · status 98.0%; mockable `commandContext`/
+  `lookPath` seams on azure/k8s/ssh avoid real cloud CLIs in unit tests
 
 ______________________________________________________________________
 
