@@ -122,6 +122,7 @@ func (opts *switchAllOptions) run(ctx context.Context) error {
 	fmt.Printf("🔄 Switching to environment: %s\n", env.Name)
 	if opts.dryRun {
 		fmt.Println("👁️  DRY-RUN MODE: No changes will be made")
+		opts.displaySkippedHooks(env)
 	}
 
 	result, err := switcher.SwitchEnvironment(ctx, env, switchOptions)
@@ -295,6 +296,22 @@ func (opts *switchAllOptions) confirmSwitch(env *environment.Environment) error 
 	}
 
 	return nil
+}
+
+// displaySkippedHooks lists the hooks a real switch would run. Dry-run does not
+// execute them, so they are reported rather than performed.
+func (opts *switchAllOptions) displaySkippedHooks(env *environment.Environment) {
+	if len(env.PreHooks) == 0 && len(env.PostHooks) == 0 {
+		return
+	}
+
+	fmt.Printf("🪝 Hooks (not executed in dry-run):\n")
+	for _, hook := range env.PreHooks {
+		fmt.Printf("   [pre-hook] would run: %s\n", hook.Command)
+	}
+	for _, hook := range env.PostHooks {
+		fmt.Printf("   [post-hook] would run: %s\n", hook.Command)
+	}
 }
 
 // reportProgress reports switching progress.

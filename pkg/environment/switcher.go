@@ -72,12 +72,14 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 
 	previousStates := make(map[string]any)
 
-	if err := es.executeHooks(ctx, env.PreHooks, "pre-hook"); err != nil {
-		return &SwitchResult{
-			Success:  false,
-			Duration: time.Since(startTime),
-			Errors:   []SwitchError{{Service: "pre-hook", Error: err.Error(), Time: time.Now()}},
-		}, err
+	if !options.DryRun {
+		if err := es.executeHooks(ctx, env.PreHooks, "pre-hook"); err != nil {
+			return &SwitchResult{
+				Success:  false,
+				Duration: time.Since(startTime),
+				Errors:   []SwitchError{{Service: "pre-hook", Error: err.Error(), Time: time.Now()}},
+			}, err
+		}
 	}
 
 	totalServices := len(env.Services)
@@ -120,12 +122,14 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 		}
 	}
 
-	if err := es.executeHooks(ctx, env.PostHooks, "post-hook"); err != nil {
-		result.Errors = append(result.Errors, SwitchError{
-			Service: "post-hook",
-			Error:   err.Error(),
-			Time:    time.Now(),
-		})
+	if !options.DryRun {
+		if err := es.executeHooks(ctx, env.PostHooks, "post-hook"); err != nil {
+			result.Errors = append(result.Errors, SwitchError{
+				Service: "post-hook",
+				Error:   err.Error(),
+				Time:    time.Now(),
+			})
+		}
 	}
 
 	result.Duration = time.Since(startTime)

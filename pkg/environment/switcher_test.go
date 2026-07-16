@@ -5,6 +5,8 @@ package environment
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 )
@@ -446,6 +448,73 @@ func TestEnvironmentSwitcher_SwitchEnvironment_DryRun(t *testing.T) {
 	if awsMock.switchCalled {
 		t.Error("Switcher should NOT be called in dry run mode")
 	}
+}
+
+// TestEnvironmentSwitcher_SwitchEnvironment_DryRunHooks tests that dry run mode does
+// not execute pre/post hooks. Each hook creates a marker file, so the marker's
+// presence is direct proof the hook's shell command ran.
+func TestEnvironmentSwitcher_SwitchEnvironment_DryRunHooks(t *testing.T) {
+	// newHookEnv builds an environment whose hooks touch marker files under dir.
+	newHookEnv := func(dir string) *Environment {
+		return &Environment{
+			Name: "test-env",
+			Services: map[string]ServiceConfig{
+				"aws": {AWS: &AWSConfig{Profile: "test"}},
+			},
+			PreHooks:  []Hook{{Command: "touch " + filepath.Join(dir, "pre-hook-ran")}},
+			PostHooks: []Hook{{Command: "touch " + filepath.Join(dir, "post-hook-ran")}},
+		}
+	}
+
+	markerExists := func(t *testing.T, dir, name string) bool {
+		t.Helper()
+		_, err := os.Stat(filepath.Join(dir, name))
+		return err == nil
+	}
+
+	t.Run("dry_run_skips_hooks", func(t *testing.T) {
+		dir := t.TempDir()
+		es := NewEnvironmentSwitcher()
+		es.Register(newMockSwitcher("aws"))
+
+		ctx := context.Background()
+		result, err := es.SwitchEnvironment(ctx, newHookEnv(dir), SwitchOptions{DryRun: true})
+		if err != nil {
+			t.Fatalf("SwitchEnvironment() error = %v", err)
+		}
+
+		if !result.Success {
+			t.Error("DryRun should succeed")
+		}
+
+		for _, marker := range []string{"pre-hook-ran", "post-hook-ran"} {
+			if markerExists(t, dir, marker) {
+				t.Errorf("%s exists: dry run must not execute hooks", marker)
+			}
+		}
+	})
+
+	t.Run("normal_run_executes_hooks", func(t *testing.T) {
+		dir := t.TempDir()
+		es := NewEnvironmentSwitcher()
+		es.Register(newMockSwitcher("aws"))
+
+		ctx := context.Background()
+		result, err := es.SwitchEnvironment(ctx, newHookEnv(dir), SwitchOptions{})
+		if err != nil {
+			t.Fatalf("SwitchEnvironment() error = %v", err)
+		}
+
+		if !result.Success {
+			t.Error("SwitchEnvironment() should succeed")
+		}
+
+		for _, marker := range []string{"pre-hook-ran", "post-hook-ran"} {
+			if !markerExists(t, dir, marker) {
+				t.Errorf("%s missing: normal run must execute hooks", marker)
+			}
+		}
+	})
 }
 
 // TestEnvironmentSwitcher_SwitchEnvironment_WithProgress tests progress callback.
