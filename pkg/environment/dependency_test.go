@@ -67,7 +67,7 @@ func TestDependencyResolver_ResolveDependencies(t *testing.T) {
 		{
 			name: "parallel services with shared dependency",
 			services: map[string]ServiceConfig{
-				"base":    {},
+				"base":     {},
 				"service1": {},
 				"service2": {},
 			},
@@ -84,8 +84,8 @@ func TestDependencyResolver_ResolveDependencies(t *testing.T) {
 				"aws": {},
 			},
 			dependencies: []string{"invalid"},
-			wantErr:     true,
-			errContains: "invalid dependency format",
+			wantErr:      true,
+			errContains:  "invalid dependency format",
 		},
 		{
 			name: "source service not found",
@@ -93,8 +93,8 @@ func TestDependencyResolver_ResolveDependencies(t *testing.T) {
 				"gcp": {},
 			},
 			dependencies: []string{"aws -> gcp"},
-			wantErr:     true,
-			errContains: "source service",
+			wantErr:      true,
+			errContains:  "source service",
 		},
 		{
 			name: "target service not found",
@@ -102,8 +102,8 @@ func TestDependencyResolver_ResolveDependencies(t *testing.T) {
 				"aws": {},
 			},
 			dependencies: []string{"aws -> gcp"},
-			wantErr:     true,
-			errContains: "target service",
+			wantErr:      true,
+			errContains:  "target service",
 		},
 		{
 			name: "circular dependency",
@@ -159,7 +159,6 @@ func TestDependencyResolver_GetExecutionOrder(t *testing.T) {
 
 	resolver := NewDependencyResolver(services, deps)
 	order, err := resolver.GetExecutionOrder()
-
 	if err != nil {
 		t.Fatalf("GetExecutionOrder() error = %v", err)
 	}
@@ -222,7 +221,6 @@ func TestDependencyResolver_GetParallelGroups(t *testing.T) {
 
 	resolver := NewDependencyResolver(services, deps)
 	groups, err := resolver.GetParallelGroups()
-
 	if err != nil {
 		t.Fatalf("GetParallelGroups() error = %v", err)
 	}
@@ -372,7 +370,6 @@ func TestDependencyResolver_ComplexGraph(t *testing.T) {
 
 	resolver := NewDependencyResolver(services, deps)
 	groups, err := resolver.GetParallelGroups()
-
 	if err != nil {
 		t.Fatalf("GetParallelGroups() error = %v", err)
 	}
@@ -410,7 +407,6 @@ func TestDependencyResolver_ComplexGraph(t *testing.T) {
 func TestDependencyResolver_EmptyServices(t *testing.T) {
 	resolver := NewDependencyResolver(nil, nil)
 	groups, err := resolver.ResolveDependencies()
-
 	if err != nil {
 		t.Fatalf("ResolveDependencies() error = %v", err)
 	}

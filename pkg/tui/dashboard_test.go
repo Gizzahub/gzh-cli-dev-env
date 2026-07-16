@@ -364,9 +364,9 @@ func TestDashboardModel_HandleQuickAction(t *testing.T) {
 	model := NewDashboardModel()
 
 	tests := []struct {
-		action   int
-		hasCmd   bool
-		cmdType  string
+		action  int
+		hasCmd  bool
+		cmdType string
 	}{
 		{1, true, "switch env"},
 		{2, true, "refresh"},

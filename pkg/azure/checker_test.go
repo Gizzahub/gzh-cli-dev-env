@@ -181,7 +181,6 @@ func TestChecker_CheckStatus_ContextCanceled(t *testing.T) {
 	cancel() // Cancel immediately
 
 	st, err := checker.CheckStatus(ctx)
-
 	// Should return a valid status even with canceled context
 	if err != nil {
 		t.Logf("CheckStatus() with canceled context error = %v", err)

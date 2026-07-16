@@ -156,7 +156,6 @@ func TestStatusCollector_CollectAll_Sequential(t *testing.T) {
 		Parallel: false,
 		Timeout:  5 * time.Second,
 	})
-
 	if err != nil {
 		t.Fatalf("CollectAll() error = %v", err)
 	}
@@ -186,7 +185,6 @@ func TestStatusCollector_CollectAll_Parallel(t *testing.T) {
 		Parallel: true,
 		Timeout:  5 * time.Second,
 	})
-
 	if err != nil {
 		t.Fatalf("CollectAll() error = %v", err)
 	}
@@ -238,7 +236,6 @@ func TestStatusCollector_CollectAll_FilteredServices(t *testing.T) {
 		Services: []string{"service1", "service3"},
 		Timeout:  5 * time.Second,
 	})
-
 	if err != nil {
 		t.Fatalf("CollectAll() error = %v", err)
 	}
@@ -262,7 +259,6 @@ func TestStatusCollector_CollectAll_WithHealthCheck(t *testing.T) {
 		CheckHealth: true,
 		Timeout:     5 * time.Second,
 	})
-
 	if err != nil {
 		t.Fatalf("CollectAll() error = %v", err)
 	}
@@ -291,7 +287,6 @@ func TestStatusCollector_CollectAll_HealthCheckError(t *testing.T) {
 		CheckHealth: true,
 		Timeout:     5 * time.Second,
 	})
-
 	if err != nil {
 		t.Fatalf("CollectAll() error = %v", err)
 	}
@@ -316,7 +311,6 @@ func TestStatusCollector_CollectAll_StatusError(t *testing.T) {
 	results, err := collector.CollectAll(context.Background(), StatusOptions{
 		Timeout: 5 * time.Second,
 	})
-
 	if err != nil {
 		t.Fatalf("CollectAll() error = %v", err)
 	}
@@ -346,7 +340,6 @@ func TestStatusCollector_CollectAll_ParallelError(t *testing.T) {
 		Parallel: true,
 		Timeout:  5 * time.Second,
 	})
-
 	if err != nil {
 		t.Fatalf("CollectAll() error = %v", err)
 	}
@@ -373,7 +366,6 @@ func TestStatusCollector_CollectAll_DefaultTimeout(t *testing.T) {
 
 	// No timeout in options, should use collector's default
 	results, err := collector.CollectAll(context.Background(), StatusOptions{})
-
 	if err != nil {
 		t.Fatalf("CollectAll() error = %v", err)
 	}

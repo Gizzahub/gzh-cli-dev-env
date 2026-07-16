@@ -361,7 +361,6 @@ func TestEnvironmentSwitcher_SwitchEnvironment(t *testing.T) {
 
 	ctx := context.Background()
 	result, err := es.SwitchEnvironment(ctx, env, SwitchOptions{})
-
 	if err != nil {
 		t.Fatalf("SwitchEnvironment() error = %v", err)
 	}
@@ -435,7 +434,6 @@ func TestEnvironmentSwitcher_SwitchEnvironment_DryRun(t *testing.T) {
 
 	ctx := context.Background()
 	result, err := es.SwitchEnvironment(ctx, env, SwitchOptions{DryRun: true})
-
 	if err != nil {
 		t.Fatalf("SwitchEnvironment() error = %v", err)
 	}
@@ -475,7 +473,6 @@ func TestEnvironmentSwitcher_SwitchEnvironment_WithProgress(t *testing.T) {
 
 	ctx := context.Background()
 	_, err := es.SwitchEnvironment(ctx, env, SwitchOptions{})
-
 	if err != nil {
 		t.Fatalf("SwitchEnvironment() error = %v", err)
 	}
@@ -502,6 +499,7 @@ func (m *errorMockSwitcher) Name() string { return m.name }
 func (m *errorMockSwitcher) Switch(ctx context.Context, config any) error {
 	return context.DeadlineExceeded
 }
+
 func (m *errorMockSwitcher) GetCurrentState(ctx context.Context) (any, error)      { return m.state, nil }
 func (m *errorMockSwitcher) Rollback(ctx context.Context, previousState any) error { return nil }
 
@@ -582,7 +580,6 @@ func TestEnvironmentSwitcher_SwitchEnvironment_MultipleServices(t *testing.T) {
 
 	ctx := context.Background()
 	result, err := es.SwitchEnvironment(ctx, env, SwitchOptions{})
-
 	if err != nil {
 		t.Fatalf("SwitchEnvironment() error = %v", err)
 	}
@@ -618,7 +615,6 @@ func TestEnvironmentSwitcher_SwitchEnvironment_Parallel(t *testing.T) {
 
 	ctx := context.Background()
 	result, err := es.SwitchEnvironment(ctx, env, SwitchOptions{Parallel: true})
-
 	if err != nil {
 		t.Fatalf("SwitchEnvironment() error = %v", err)
 	}
@@ -656,7 +652,6 @@ func TestEnvironmentSwitcher_SwitchEnvironment_AllServiceTypes(t *testing.T) {
 
 	ctx := context.Background()
 	result, err := es.SwitchEnvironment(ctx, env, SwitchOptions{})
-
 	if err != nil {
 		t.Fatalf("SwitchEnvironment() error = %v", err)
 	}
