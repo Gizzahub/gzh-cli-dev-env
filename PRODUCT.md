@@ -42,17 +42,18 @@ G1. **Service parity (조회 = 전환)**
 G2. **Buildable and testable**
 
 - Target: `make build` · `make test` 통과
-- 현재 **둘 다 실패**. `.make/build.mk`가 (1) Go에서 제거된
-  `GOEXPERIMENT=rangefunc`를 설정하고 (2) 본 리포에 없는 `./cmd/gzh-git`를
-  빌드한다. `make test`는 `build`에 의존하므로 함께 실패하고, **CI가 red다**.
-  `go test ./...` 직접 실행은 통과한다. **최우선 과제다**
+- 현재 **충족** (2026-07-16). 제거된 `GOEXPERIMENT=rangefunc` 설정과 본 리포에
+  없는 `./cmd/gzh-git` 빌드 대상이 원인이었다. 라이브러리이므로 `go build ./...`로
+  전환했다. CI test 잡 green
+- 잔여: 같은 설정 오류가 golangci-lint의 패키지 로딩을 깨뜨려 린터가 0건을 보고하고
+  있었다. 이제 린터가 동작하며 **기존 이슈 100건**이 드러나 **CI lint 잡은 여전히 red다**
 
 G3. **Concurrency safety**
 
 - Target: `go test -race ./...` 통과
-- 현재 **실패 (재현되는 실제 데이터 레이스)**. `switchServicesParallel`의 goroutine들이
-  뮤텍스 없이 공유 `previousStates` 맵에 쓰고 result 슬라이스에 append한다
-  (`es.mu`는 레지스트리만 보호). **`switch-all --parallel`은 현재 안전하지 않다**
+- 현재 **충족** (2026-07-16). `switchServicesParallel`의 goroutine들이 공유
+  `previousStates` 맵과 result 슬라이스에 무방비로 쓰던 레이스를 `stateMu`로
+  보호했다 (`es.mu`는 레지스트리 전용). `-race` 전체 통과, 병렬 테스트 `-count=50` 반복 통과
 
 G4. **Dry-run honesty**
 
@@ -118,7 +119,7 @@ ______________________________________________________________________
 
 - GUIDELINES §3 베이스라인 충족 — `Makefile`·`.golangci.yml`(v2)·CI·`LICENSE`(MIT,
   소스의 SPDX 헤더 및 README 주장과 일치)·문서·본 PRODUCT.md 보유.
-  단 CI는 `make build` 실패로 red다 (G2)
+  CI는 test·vulncheck green, **lint는 red다** (G2)
 
 ______________________________________________________________________
 
@@ -126,11 +127,12 @@ ______________________________________________________________________
 
 **Build and Lint**
 
-- `make build` · `make test` 통과 (G2 — 현재 미충족)
+- `make build` · `make test` 통과 (G2 — 현재 충족)
+- `make lint` 통과 (G2 — **현재 미충족**: 기존 이슈 100건)
 
 **Concurrency**
 
-- `go test -race ./...` 통과 (G3 — 현재 미충족)
+- `go test -race ./...` 통과 (G3 — 현재 충족)
 
 **Testing**
 
