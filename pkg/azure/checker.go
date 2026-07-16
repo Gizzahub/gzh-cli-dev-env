@@ -14,6 +14,8 @@ import (
 	"github.com/gizzahub/gzh-cli-dev-env/pkg/status"
 )
 
+const azureName = "azure"
+
 // Checker implements status.ServiceChecker for Microsoft Azure.
 type Checker struct{}
 
@@ -24,13 +26,13 @@ func NewChecker() *Checker {
 
 // Name returns the service name.
 func (a *Checker) Name() string {
-	return "azure"
+	return azureName
 }
 
 // CheckStatus checks Azure current status.
 func (a *Checker) CheckStatus(ctx context.Context) (*status.ServiceStatus, error) {
 	st := &status.ServiceStatus{
-		Name:        "azure",
+		Name:        azureName,
 		Status:      status.StatusUnknown,
 		Current:     status.CurrentConfig{},
 		Credentials: status.CredentialStatus{},
@@ -72,6 +74,7 @@ func (a *Checker) CheckStatus(ctx context.Context) (*status.ServiceStatus, error
 	if err != nil {
 		st.Status = status.StatusError
 		st.Details["credential_error"] = err.Error()
+		//nolint:nilerr // intentional: errors converted to status fields
 		return st, nil
 	}
 
@@ -143,6 +146,8 @@ func (a *Checker) getCurrentAccount(ctx context.Context) (string, error) {
 }
 
 // checkCredentials checks Azure credentials validity.
+//
+//nolint:unparam // intentional: error always nil; errors converted to status fields
 func (a *Checker) checkCredentials(ctx context.Context) (*status.CredentialStatus, error) {
 	credStatus := &status.CredentialStatus{
 		Valid: false,
@@ -154,6 +159,7 @@ func (a *Checker) checkCredentials(ctx context.Context) (*status.CredentialStatu
 	err := cmd.Run()
 	if err != nil {
 		credStatus.Warning = "Credentials invalid or expired"
+		//nolint:nilerr // intentional: errors converted to status fields
 		return credStatus, nil
 	}
 

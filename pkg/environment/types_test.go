@@ -4,6 +4,7 @@
 package environment
 
 import (
+	"slices"
 	"testing"
 	"time"
 )
@@ -34,6 +35,9 @@ func TestEnvironment_Fields(t *testing.T) {
 	}
 	if env.Services["aws"].AWS.Profile != "prod" {
 		t.Error("AWS Profile mismatch")
+	}
+	if !slices.Equal(env.Dependencies, []string{"aws"}) {
+		t.Errorf("Dependencies = %v, want [aws]", env.Dependencies)
 	}
 }
 
@@ -82,6 +86,9 @@ func TestGCPConfig_Fields(t *testing.T) {
 	}
 	if config.Account != "user@example.com" {
 		t.Error("Account mismatch")
+	}
+	if config.Region != "us-central1" {
+		t.Errorf("Region = %v, want us-central1", config.Region)
 	}
 }
 
@@ -168,6 +175,9 @@ func TestSwitchProgress_Fields(t *testing.T) {
 	if progress.CurrentService != "kubernetes" {
 		t.Error("CurrentService mismatch")
 	}
+	if progress.Status != "switching" {
+		t.Errorf("Status = %v, want switching", progress.Status)
+	}
 }
 
 func TestSwitchResult_Success(t *testing.T) {
@@ -186,6 +196,9 @@ func TestSwitchResult_Success(t *testing.T) {
 	}
 	if len(result.FailedServices) != 0 {
 		t.Error("FailedServices should be empty")
+	}
+	if result.Duration != 5*time.Second {
+		t.Errorf("Duration = %v, want 5s", result.Duration)
 	}
 }
 
@@ -206,6 +219,12 @@ func TestSwitchResult_Failure(t *testing.T) {
 
 	if result.Success {
 		t.Error("Success should be false")
+	}
+	if !slices.Equal(result.SwitchedServices, []string{"aws"}) {
+		t.Errorf("SwitchedServices = %v, want [aws]", result.SwitchedServices)
+	}
+	if !slices.Equal(result.FailedServices, []string{"gcp"}) {
+		t.Errorf("FailedServices = %v, want [gcp]", result.FailedServices)
 	}
 	if !result.RollbackPerformed {
 		t.Error("RollbackPerformed should be true")
@@ -229,6 +248,9 @@ func TestSwitchOptions_Fields(t *testing.T) {
 	}
 	if opts.Force {
 		t.Error("Force should be false")
+	}
+	if !opts.RollbackOnError {
+		t.Error("RollbackOnError should be true")
 	}
 	if !opts.Parallel {
 		t.Error("Parallel should be true")

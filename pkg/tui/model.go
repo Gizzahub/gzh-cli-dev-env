@@ -20,6 +20,12 @@ import (
 	"github.com/gizzahub/gzh-cli-dev-env/pkg/status"
 )
 
+const (
+	keyCtrlC = "ctrl+c"
+	keyQ     = "q"
+	keyEsc   = "esc"
+)
+
 // Model represents the main TUI application model.
 type Model struct {
 	state       AppState
@@ -103,8 +109,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case TickMsg:
 		// Periodic status update
-		cmds = append(cmds, m.refreshStatus())
-		cmds = append(cmds, m.startUpdateTicker())
+		cmds = append(cmds, m.refreshStatus(), m.startUpdateTicker())
 
 	case StatusUpdateMsg:
 		m.lastUpdate = time.Now()
@@ -178,16 +183,15 @@ func (m *Model) View() string {
 // handleGlobalKeys handles global keyboard shortcuts.
 func (m *Model) handleGlobalKeys(msg tea.KeyMsg) bool {
 	switch msg.String() {
-	case "ctrl+c", "q":
+	case keyCtrlC, keyQ:
 		if m.currentView == ViewDashboard {
 			return true // Quit
-		} else {
-			// Navigate back to dashboard
-			m.currentView = ViewDashboard
-			m.state = StateDashboard
-			return false
 		}
-	case "esc":
+		// Navigate back to dashboard
+		m.currentView = ViewDashboard
+		m.state = StateDashboard
+		return false
+	case keyEsc:
 		if m.currentView != ViewDashboard {
 			m.currentView = ViewDashboard
 			m.state = StateDashboard

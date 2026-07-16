@@ -49,7 +49,7 @@ type ConfigInfo struct {
 
 // NewManager creates a new configuration manager.
 func NewManager(serviceName, configFileName, defaultConfig string) *Manager {
-	homeDir, _ := os.UserHomeDir()
+	homeDir, _ := os.UserHomeDir() //nolint:errcheck // HomeDir error is acceptable; uses empty string if unavailable
 	return &Manager{
 		serviceName:    serviceName,
 		configFileName: configFileName,
@@ -60,7 +60,7 @@ func NewManager(serviceName, configFileName, defaultConfig string) *Manager {
 
 // DefaultOptions returns default options for the service.
 func (m *Manager) DefaultOptions() *Options {
-	homeDir, _ := os.UserHomeDir()
+	homeDir, _ := os.UserHomeDir() //nolint:errcheck // HomeDir error is acceptable; uses empty string if unavailable
 
 	return &Options{
 		ConfigPath: filepath.Join(homeDir, m.defaultConfig),
@@ -95,7 +95,7 @@ func (m *Manager) Save(opts *Options) error {
 	}
 
 	// Create store directory if it doesn't exist
-	if err := os.MkdirAll(storePath, 0o755); err != nil {
+	if err := os.MkdirAll(storePath, 0o750); err != nil {
 		return fmt.Errorf("failed to create store directory: %w", err)
 	}
 
@@ -120,7 +120,7 @@ func (m *Manager) Save(opts *Options) error {
 	metadataFile := filepath.Join(storePath, opts.Name+".metadata.json")
 	if err := saveMetadata(metadataFile, metadata); err != nil {
 		// Don't fail if metadata save fails
-		return nil
+		return nil //nolint:nilerr // Metadata save is optional; configuration save succeeds regardless
 	}
 
 	return nil
@@ -149,7 +149,7 @@ func (m *Manager) Load(opts *Options) (*ConfigMetadata, error) {
 	}
 
 	// Create target directory if it doesn't exist
-	if err := os.MkdirAll(filepath.Dir(opts.ConfigPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(opts.ConfigPath), 0o750); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -160,7 +160,7 @@ func (m *Manager) Load(opts *Options) (*ConfigMetadata, error) {
 
 	// Load metadata if available
 	metadataFile := filepath.Join(storePath, opts.Name+".metadata.json")
-	metadata, _ := loadMetadata(metadataFile)
+	metadata, _ := loadMetadata(metadataFile) //nolint:errcheck // Metadata is optional; missing/corrupt metadata is acceptable
 
 	return metadata, nil
 }

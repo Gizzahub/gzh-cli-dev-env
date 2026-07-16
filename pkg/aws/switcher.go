@@ -22,7 +22,7 @@ func NewSwitcher() *Switcher {
 
 // Name returns the service name.
 func (a *Switcher) Name() string {
-	return "aws"
+	return pkgName
 }
 
 // Switch switches to the specified AWS configuration.
@@ -59,10 +59,12 @@ func (a *Switcher) Switch(ctx context.Context, config any) error {
 func (a *Switcher) GetCurrentState(ctx context.Context) (any, error) {
 	// Get current AWS profile
 	cmd := exec.CommandContext(ctx, "aws", "configure", "get", "profile")
+	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
 	profileOutput, _ := cmd.Output()
 
 	// Get current AWS region
 	cmd = exec.CommandContext(ctx, "aws", "configure", "get", "region")
+	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
 	regionOutput, _ := cmd.Output()
 
 	return &environment.AWSConfig{

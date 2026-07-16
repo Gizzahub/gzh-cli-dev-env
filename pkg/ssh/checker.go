@@ -16,6 +16,11 @@ import (
 	"github.com/gizzahub/gzh-cli-dev-env/pkg/status"
 )
 
+const (
+	// serviceName is the service name for SSH.
+	serviceName = "ssh"
+)
+
 // Checker implements status.ServiceChecker for SSH.
 type Checker struct{}
 
@@ -26,13 +31,13 @@ func NewChecker() *Checker {
 
 // Name returns the service name.
 func (s *Checker) Name() string {
-	return "ssh"
+	return serviceName
 }
 
 // CheckStatus checks SSH current status.
 func (s *Checker) CheckStatus(ctx context.Context) (*status.ServiceStatus, error) {
 	st := &status.ServiceStatus{
-		Name:        "ssh",
+		Name:        serviceName,
 		Status:      status.StatusUnknown,
 		Current:     status.CurrentConfig{},
 		Credentials: status.CredentialStatus{},
@@ -48,7 +53,7 @@ func (s *Checker) CheckStatus(ctx context.Context) (*status.ServiceStatus, error
 	}
 
 	// Check SSH agent status
-	agentStatus := s.checkSSHAgent()
+	agentStatus := s.checkSSHAgent(ctx)
 	if !agentStatus {
 		st.Status = status.StatusInactive
 		st.Details["error"] = "SSH agent not running"
@@ -109,6 +114,7 @@ func (s *Checker) CheckHealth(ctx context.Context) (*status.HealthStatus, error)
 
 	// Check SSH config file
 	configPath := filepath.Join(os.Getenv("HOME"), ".ssh", "config")
+	//nolint:gosec // G703: Path is constructed from HOME env var (OS-managed) + fixed path components; no taint from user input
 	if _, err := os.Stat(configPath); err == nil {
 		health.Details["config_file"] = configPath
 	}
@@ -123,14 +129,14 @@ func (s *Checker) isCLIAvailable() bool {
 }
 
 // checkSSHAgent checks if SSH agent is running.
-func (s *Checker) checkSSHAgent() bool {
+func (s *Checker) checkSSHAgent(ctx context.Context) bool {
 	// Check SSH_AUTH_SOCK environment variable
 	if os.Getenv("SSH_AUTH_SOCK") == "" {
 		return false
 	}
 
 	// Try to connect to SSH agent
-	cmd := exec.Command("ssh-add", "-l")
+	cmd := exec.CommandContext(ctx, "ssh-add", "-l")
 	err := cmd.Run()
 	// ssh-add -l returns 0 if keys are loaded, 1 if no keys, 2 if agent not running
 	var exitErr *exec.ExitError

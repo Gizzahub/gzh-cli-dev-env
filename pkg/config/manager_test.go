@@ -4,6 +4,7 @@
 package config
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -120,7 +121,7 @@ func TestManager_SaveAndLoad(t *testing.T) {
 		t.Fatalf("Failed to read loaded file: %v", err)
 	}
 
-	if string(loadedContent) != string(testContent) {
+	if !bytes.Equal(loadedContent, testContent) {
 		t.Errorf("Loaded content mismatch")
 	}
 }
@@ -205,7 +206,6 @@ func TestOptions_Fields(t *testing.T) {
 		Name:        "my-config",
 		Description: "My configuration",
 		ConfigPath:  "/path/to/config",
-		StorePath:   "/path/to/store",
 		Force:       true,
 	}
 
@@ -225,9 +225,8 @@ func TestOptions_Fields(t *testing.T) {
 
 func TestConfigInfo_Fields(t *testing.T) {
 	info := ConfigInfo{
-		Name:        "test-config",
-		Description: "Test configuration",
-		Size:        1024,
+		Name: "test-config",
+		Size: 1024,
 	}
 
 	if info.Name != "test-config" {

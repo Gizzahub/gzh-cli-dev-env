@@ -12,9 +12,13 @@ import (
 type StatusType string
 
 const (
+	// StatusActive represents an active service.
 	StatusActive   StatusType = "active"
+	// StatusInactive represents an inactive service.
 	StatusInactive StatusType = "inactive"
+	// StatusError represents a service in error state.
 	StatusError    StatusType = "error"
+	// StatusUnknown represents an unknown service state.
 	StatusUnknown  StatusType = "unknown"
 )
 

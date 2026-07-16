@@ -29,7 +29,6 @@ func TestStatusType_String(t *testing.T) {
 }
 
 func TestServiceStatus_Fields(t *testing.T) {
-	now := time.Now()
 	status := ServiceStatus{
 		Name:   "aws",
 		Status: StatusActive,
@@ -39,9 +38,8 @@ func TestServiceStatus_Fields(t *testing.T) {
 		},
 		Credentials: CredentialStatus{
 			Valid:     true,
-			ExpiresAt: now.Add(1 * time.Hour),
+			ExpiresAt: time.Now().Add(1 * time.Hour),
 		},
-		LastUsed: now,
 	}
 
 	if status.Name != "aws" {
@@ -71,7 +69,6 @@ func TestCurrentConfig_Empty(t *testing.T) {
 
 func TestCredentialStatus_Expired(t *testing.T) {
 	expired := CredentialStatus{
-		Valid:     true,
 		ExpiresAt: time.Now().Add(-1 * time.Hour), // Expired 1 hour ago
 	}
 
@@ -82,11 +79,9 @@ func TestCredentialStatus_Expired(t *testing.T) {
 
 func TestHealthStatus_Fields(t *testing.T) {
 	health := HealthStatus{
-		Status:    StatusActive,
-		Message:   "All systems operational",
-		CheckedAt: time.Now(),
-		Duration:  100 * time.Millisecond,
-		Details:   map[string]any{"api": "ok"},
+		Status:   StatusActive,
+		Message:  "All systems operational",
+		Duration: 100 * time.Millisecond,
 	}
 
 	if health.Status != StatusActive {

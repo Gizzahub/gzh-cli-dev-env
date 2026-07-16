@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Archmagece
+// SPDX-License-Identifier: MIT
+
 // Package config provides configuration management functionality including
 // save, load, and list operations for environment configurations.
 //

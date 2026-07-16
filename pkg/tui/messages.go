@@ -91,34 +91,52 @@ type SearchResult struct {
 type ViewType int
 
 const (
+	// ViewDashboard is the main dashboard view.
 	ViewDashboard ViewType = iota
+	// ViewServiceDetail is the service detail view.
 	ViewServiceDetail
+	// ViewEnvironmentSwitch is the environment switch view.
 	ViewEnvironmentSwitch
+	// ViewSettings is the settings view.
 	ViewSettings
+	// ViewLogs is the logs view.
 	ViewLogs
+	// ViewHelp is the help view.
 	ViewHelp
+	// ViewSearch is the search view.
 	ViewSearch
+)
+
+const (
+	dashboardViewName            = "Dashboard"
+	serviceDetailViewName        = "Service Detail"
+	environmentSwitchViewName    = "Environment Switch"
+	settingsViewName             = "Settings"
+	logsViewName                 = "Logs"
+	helpViewName                 = "Help"
+	searchViewName               = "Search"
+	unknownViewName              = "Unknown"
 )
 
 // String returns the string representation of a ViewType.
 func (v ViewType) String() string {
 	switch v {
 	case ViewDashboard:
-		return "Dashboard"
+		return dashboardViewName
 	case ViewServiceDetail:
-		return "Service Detail"
+		return serviceDetailViewName
 	case ViewEnvironmentSwitch:
-		return "Environment Switch"
+		return environmentSwitchViewName
 	case ViewSettings:
-		return "Settings"
+		return settingsViewName
 	case ViewLogs:
-		return "Logs"
+		return logsViewName
 	case ViewHelp:
-		return "Help"
+		return helpViewName
 	case ViewSearch:
-		return "Search"
+		return searchViewName
 	default:
-		return "Unknown"
+		return unknownViewName
 	}
 }
 
@@ -126,14 +144,23 @@ func (v ViewType) String() string {
 type AppState int
 
 const (
+	// StateLoading is the loading state.
 	StateLoading AppState = iota
+	// StateDashboard is the dashboard state.
 	StateDashboard
+	// StateServiceDetail is the service detail state.
 	StateServiceDetail
+	// StateEnvironmentSwitch is the environment switch state.
 	StateEnvironmentSwitch
+	// StateSettings is the settings state.
 	StateSettings
+	// StateLogs is the logs state.
 	StateLogs
+	// StateError is the error state.
 	StateError
+	// StateHelp is the help state.
 	StateHelp
+	// StateSearch is the search state.
 	StateSearch
 )
 
@@ -143,22 +170,22 @@ func (s AppState) String() string {
 	case StateLoading:
 		return "Loading"
 	case StateDashboard:
-		return "Dashboard"
+		return dashboardViewName
 	case StateServiceDetail:
-		return "Service Detail"
+		return serviceDetailViewName
 	case StateEnvironmentSwitch:
-		return "Environment Switch"
+		return environmentSwitchViewName
 	case StateSettings:
-		return "Settings"
+		return settingsViewName
 	case StateLogs:
-		return "Logs"
+		return logsViewName
 	case StateError:
 		return "Error"
 	case StateHelp:
-		return "Help"
+		return helpViewName
 	case StateSearch:
-		return "Search"
+		return searchViewName
 	default:
-		return "Unknown"
+		return unknownViewName
 	}
 }

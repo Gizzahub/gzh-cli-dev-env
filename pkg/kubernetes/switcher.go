@@ -22,7 +22,7 @@ func NewSwitcher() *Switcher {
 
 // Name returns the service name.
 func (k *Switcher) Name() string {
-	return "kubernetes"
+	return serviceName
 }
 
 // Switch switches to the specified Kubernetes configuration.
@@ -55,11 +55,11 @@ func (k *Switcher) Switch(ctx context.Context, config any) error {
 func (k *Switcher) GetCurrentState(ctx context.Context) (any, error) {
 	// Get current Kubernetes context
 	cmd := exec.CommandContext(ctx, "kubectl", "config", "current-context")
-	contextOutput, _ := cmd.Output()
+	contextOutput, _ := cmd.Output() //nolint:errcheck // Error ignored; empty string used on failure
 
 	// Get current namespace
 	cmd = exec.CommandContext(ctx, "kubectl", "config", "view", "--minify", "--output", "jsonpath={..namespace}")
-	namespaceOutput, _ := cmd.Output()
+	namespaceOutput, _ := cmd.Output() //nolint:errcheck // Error ignored; empty string used on failure
 
 	return &environment.KubernetesConfig{
 		Context:   strings.TrimSpace(string(contextOutput)),

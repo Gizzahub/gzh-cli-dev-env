@@ -17,6 +17,10 @@ import (
 	"github.com/gizzahub/gzh-cli-dev-env/pkg/status"
 )
 
+const (
+	defaultEnv = "production"
+)
+
 // DashboardModel represents the main dashboard view.
 type DashboardModel struct {
 	table      table.Model
@@ -67,7 +71,7 @@ func NewDashboardModel() *DashboardModel {
 		keymap:     DefaultKeyMap,
 		services:   []status.ServiceStatus{},
 		lastUpdate: time.Now(),
-		currentEnv: "production",
+		currentEnv: defaultEnv,
 		loading:    true,
 	}
 }
@@ -89,9 +93,11 @@ func (m *DashboardModel) Update(msg tea.Msg) (*DashboardModel, tea.Cmd) {
 		case key.Matches(msg, m.keymap.Down):
 			m.table, cmd = m.table.Update(msg)
 		case key.Matches(msg, m.keymap.Enter):
-			return m, m.selectService()
+			cmd := m.selectService()
+			return m, cmd
 		case key.Matches(msg, m.keymap.Refresh):
-			return m, m.refreshStatus()
+			cmd := m.refreshStatus()
+			return m, cmd
 		case key.Matches(msg, m.keymap.SwitchEnv):
 			return m, func() tea.Msg {
 				return NavigationMsg{View: ViewEnvironmentSwitch}
@@ -109,11 +115,14 @@ func (m *DashboardModel) Update(msg tea.Msg) (*DashboardModel, tea.Cmd) {
 				return NavigationMsg{View: ViewSearch}
 			}
 		case key.Matches(msg, m.keymap.QuickAction1):
-			return m, m.handleQuickAction(1)
+			cmd := m.handleQuickAction(1)
+			return m, cmd
 		case key.Matches(msg, m.keymap.QuickAction2):
-			return m, m.handleQuickAction(2)
+			cmd := m.handleQuickAction(2)
+			return m, cmd
 		case key.Matches(msg, m.keymap.QuickAction3):
-			return m, m.handleQuickAction(3)
+			cmd := m.handleQuickAction(3)
+			return m, cmd
 		default:
 			m.table, cmd = m.table.Update(msg)
 		}
@@ -283,11 +292,12 @@ func (m *DashboardModel) updateServices(services []status.ServiceStatus) {
 			// Check if credentials are expiring soon
 			if !service.Credentials.ExpiresAt.IsZero() {
 				timeUntilExpiry := time.Until(service.Credentials.ExpiresAt)
-				if timeUntilExpiry < 0 {
+				switch {
+				case timeUntilExpiry < 0:
 					credStatus = "❌ Expired"
-				} else if timeUntilExpiry < 2*time.Hour {
+				case timeUntilExpiry < 2*time.Hour:
 					credStatus = fmt.Sprintf("⚠️ Expires %s", formatDuration(timeUntilExpiry))
-				} else {
+				default:
 					credStatus = fmt.Sprintf("✅ Valid (%s)", formatDuration(timeUntilExpiry))
 				}
 			}
@@ -390,13 +400,14 @@ func (m *DashboardModel) handleQuickAction(action int) tea.Cmd {
 
 // formatDuration formats a duration into a human-readable string.
 func formatDuration(d time.Duration) string {
-	if d < time.Minute {
+	switch {
+	case d < time.Minute:
 		return fmt.Sprintf("%ds", int(d.Seconds()))
-	} else if d < time.Hour {
+	case d < time.Hour:
 		return fmt.Sprintf("%dm", int(d.Minutes()))
-	} else if d < 24*time.Hour {
+	case d < 24*time.Hour:
 		return fmt.Sprintf("%dh", int(d.Hours()))
-	} else {
+	default:
 		return fmt.Sprintf("%dd", int(d.Hours()/24))
 	}
 }

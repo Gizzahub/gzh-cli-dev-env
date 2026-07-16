@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Archmagece
+// SPDX-License-Identifier: MIT
+
 // Package tui provides a terminal user interface for interactive
 // development environment management.
 //

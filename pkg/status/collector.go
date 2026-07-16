@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const errorDetailKey = "error"
+
 // StatusCollector collects status information from multiple services.
 type StatusCollector struct {
 	checkers []ServiceChecker
@@ -47,7 +49,7 @@ func (sc *StatusCollector) CollectAll(ctx context.Context, options StatusOptions
 }
 
 // collectParallel collects status information in parallel.
-func (sc *StatusCollector) collectParallel(ctx context.Context, checkers []ServiceChecker, options StatusOptions) ([]ServiceStatus, error) {
+func (sc *StatusCollector) collectParallel(ctx context.Context, checkers []ServiceChecker, options StatusOptions) ([]ServiceStatus, error) { //nolint:unparam // error return for API consistency
 	var wg sync.WaitGroup
 	results := make([]ServiceStatus, len(checkers))
 	errors := make([]error, len(checkers))
@@ -63,7 +65,7 @@ func (sc *StatusCollector) collectParallel(ctx context.Context, checkers []Servi
 					Name:   c.Name(),
 					Status: StatusError,
 					Details: map[string]string{
-						"error": err.Error(),
+						errorDetailKey: err.Error(),
 					},
 				}
 			} else {
@@ -77,7 +79,7 @@ func (sc *StatusCollector) collectParallel(ctx context.Context, checkers []Servi
 }
 
 // collectSequential collects status information sequentially.
-func (sc *StatusCollector) collectSequential(ctx context.Context, checkers []ServiceChecker, options StatusOptions) ([]ServiceStatus, error) {
+func (sc *StatusCollector) collectSequential(ctx context.Context, checkers []ServiceChecker, options StatusOptions) ([]ServiceStatus, error) { //nolint:unparam // error return for API consistency
 	results := make([]ServiceStatus, 0, len(checkers))
 
 	for _, checker := range checkers {
@@ -87,7 +89,7 @@ func (sc *StatusCollector) collectSequential(ctx context.Context, checkers []Ser
 				Name:   checker.Name(),
 				Status: StatusError,
 				Details: map[string]string{
-					"error": err.Error(),
+					errorDetailKey: err.Error(),
 				},
 			})
 			continue

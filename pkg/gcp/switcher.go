@@ -22,7 +22,7 @@ func NewSwitcher() *Switcher {
 
 // Name returns the service name.
 func (g *Switcher) Name() string {
-	return "gcp"
+	return gcpName
 }
 
 // Switch switches to the specified GCP configuration.
@@ -63,14 +63,17 @@ func (g *Switcher) Switch(ctx context.Context, config any) error {
 func (g *Switcher) GetCurrentState(ctx context.Context) (any, error) {
 	// Get current GCP project
 	cmd := exec.CommandContext(ctx, "gcloud", "config", "get-value", "project")
+	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
 	projectOutput, _ := cmd.Output()
 
 	// Get current GCP account
 	cmd = exec.CommandContext(ctx, "gcloud", "config", "get-value", "account")
+	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
 	accountOutput, _ := cmd.Output()
 
 	// Get current GCP region
 	cmd = exec.CommandContext(ctx, "gcloud", "config", "get-value", "compute/region")
+	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
 	regionOutput, _ := cmd.Output()
 
 	return &environment.GCPConfig{

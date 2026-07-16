@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	pkgName = "aws"
 	// DefaultProfile is the default AWS profile name.
 	DefaultProfile = "default"
 	// CredentialsExpiredMsg is the message for expired credentials.
@@ -32,13 +33,13 @@ func NewChecker() *Checker {
 
 // Name returns the service name.
 func (a *Checker) Name() string {
-	return "aws"
+	return pkgName
 }
 
 // CheckStatus checks AWS current status.
 func (a *Checker) CheckStatus(ctx context.Context) (*status.ServiceStatus, error) {
 	st := &status.ServiceStatus{
-		Name:        "aws",
+		Name:        pkgName,
 		Status:      status.StatusUnknown,
 		Current:     status.CurrentConfig{},
 		Credentials: status.CredentialStatus{},
@@ -72,6 +73,7 @@ func (a *Checker) CheckStatus(ctx context.Context) (*status.ServiceStatus, error
 	if err != nil {
 		st.Status = status.StatusError
 		st.Details["credential_error"] = err.Error()
+		//nolint:nilerr // intentional: errors converted to status fields
 		return st, nil
 	}
 
@@ -130,6 +132,7 @@ func (a *Checker) getCurrentProfile() string {
 	}
 
 	// Check AWS config file for default profile
+	//nolint:noctx // function lacks context parameter; cannot use CommandContext
 	cmd := exec.Command("aws", "configure", "list", "--profile", "default")
 	if err := cmd.Run(); err == nil {
 		return DefaultProfile
@@ -151,6 +154,7 @@ func (a *Checker) getCurrentRegion() string {
 	}
 
 	// Try to get from AWS config
+	//nolint:noctx // function lacks context parameter; cannot use CommandContext
 	cmd := exec.Command("aws", "configure", "get", "region")
 	output, err := cmd.Output()
 	if err == nil && len(output) > 0 {
@@ -161,6 +165,8 @@ func (a *Checker) getCurrentRegion() string {
 }
 
 // checkCredentials checks AWS credentials validity.
+//
+//nolint:unparam // intentional: error always nil; errors converted to status fields
 func (a *Checker) checkCredentials(ctx context.Context) (*status.CredentialStatus, error) {
 	credStatus := &status.CredentialStatus{
 		Valid: false,
@@ -172,6 +178,7 @@ func (a *Checker) checkCredentials(ctx context.Context) (*status.CredentialStatu
 	err := cmd.Run()
 	if err != nil {
 		credStatus.Warning = CredentialsExpiredMsg
+		//nolint:nilerr // intentional: errors converted to status fields
 		return credStatus, nil
 	}
 

@@ -14,8 +14,13 @@ import (
 	"github.com/gizzahub/gzh-cli-dev-env/pkg/status"
 )
 
-// DefaultNamespace is the default Kubernetes namespace.
-const DefaultNamespace = "default"
+const (
+	// serviceName is the service name for Kubernetes.
+	serviceName = "kubernetes"
+
+	// DefaultNamespace is the default Kubernetes namespace.
+	DefaultNamespace = "default"
+)
 
 // Checker implements status.ServiceChecker for Kubernetes.
 type Checker struct{}
@@ -27,13 +32,13 @@ func NewChecker() *Checker {
 
 // Name returns the service name.
 func (k *Checker) Name() string {
-	return "kubernetes"
+	return serviceName
 }
 
 // CheckStatus checks Kubernetes current status.
 func (k *Checker) CheckStatus(ctx context.Context) (*status.ServiceStatus, error) {
 	st := &status.ServiceStatus{
-		Name:        "kubernetes",
+		Name:        serviceName,
 		Status:      status.StatusUnknown,
 		Current:     status.CurrentConfig{},
 		Credentials: status.CredentialStatus{},
@@ -75,7 +80,7 @@ func (k *Checker) CheckStatus(ctx context.Context) (*status.ServiceStatus, error
 	if err != nil {
 		st.Status = status.StatusError
 		st.Details["connectivity_error"] = err.Error()
-		return st, nil
+		return st, nil //nolint:nilerr // Error recorded in status details
 	}
 
 	st.Credentials = *credStatus
@@ -143,11 +148,12 @@ func (k *Checker) getCurrentContext(ctx context.Context) (string, error) {
 }
 
 // getCurrentNamespace gets the current Kubernetes namespace.
+//nolint:unparam // Error return reserved for API compatibility
 func (k *Checker) getCurrentNamespace(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "kubectl", "config", "view", "--minify", "--output", "jsonpath={..namespace}")
 	output, err := cmd.Output()
 	if err != nil {
-		return DefaultNamespace, nil // Default to "default" namespace
+		return DefaultNamespace, nil //nolint:nilerr // Safe default namespace returned on error
 	}
 
 	namespace := strings.TrimSpace(string(output))
@@ -158,6 +164,7 @@ func (k *Checker) getCurrentNamespace(ctx context.Context) (string, error) {
 }
 
 // checkClusterAccess checks if we can access the Kubernetes cluster.
+//nolint:unparam // Error return reserved for API compatibility
 func (k *Checker) checkClusterAccess(ctx context.Context) (*status.CredentialStatus, error) {
 	credStatus := &status.CredentialStatus{
 		Valid: false,
@@ -169,7 +176,7 @@ func (k *Checker) checkClusterAccess(ctx context.Context) (*status.CredentialSta
 	err := cmd.Run()
 	if err != nil {
 		credStatus.Warning = "Cannot access Kubernetes cluster"
-		return credStatus, nil
+		return credStatus, nil //nolint:nilerr // Error recorded in credStatus.Warning
 	}
 
 	credStatus.Valid = true

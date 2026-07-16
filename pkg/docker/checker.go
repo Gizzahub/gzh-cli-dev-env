@@ -14,8 +14,13 @@ import (
 	"github.com/gizzahub/gzh-cli-dev-env/pkg/status"
 )
 
-// DefaultContext is the default Docker context name.
-const DefaultContext = "default"
+const (
+	// serviceName is the service name for Docker.
+	serviceName = "docker"
+
+	// DefaultContext is the default Docker context name.
+	DefaultContext = "default"
+)
 
 // Checker implements status.ServiceChecker for Docker.
 type Checker struct{}
@@ -27,13 +32,13 @@ func NewChecker() *Checker {
 
 // Name returns the service name.
 func (d *Checker) Name() string {
-	return "docker"
+	return serviceName
 }
 
 // CheckStatus checks Docker current status.
 func (d *Checker) CheckStatus(ctx context.Context) (*status.ServiceStatus, error) {
 	st := &status.ServiceStatus{
-		Name:        "docker",
+		Name:        serviceName,
 		Status:      status.StatusUnknown,
 		Current:     status.CurrentConfig{},
 		Credentials: status.CredentialStatus{},
@@ -138,12 +143,13 @@ func (d *Checker) isDaemonRunning(ctx context.Context) bool {
 }
 
 // getCurrentContext gets the current Docker context.
+//nolint:unparam // Error return reserved for API compatibility
 func (d *Checker) getCurrentContext(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "docker", "context", "show")
 	output, err := cmd.Output()
 	if err != nil {
 		// If context command fails, assume default context
-		return DefaultContext, nil
+		return DefaultContext, nil //nolint:nilerr // Safe default context returned on error
 	}
 	return strings.TrimSpace(string(output)), nil
 }

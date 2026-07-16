@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Archmagece
+// SPDX-License-Identifier: MIT
+
 // Package ssh provides SSH-specific implementations for environment switching,
 // status checking, and configuration parsing.
 //

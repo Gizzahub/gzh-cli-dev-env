@@ -22,7 +22,7 @@ func NewSwitcher() *Switcher {
 
 // Name returns the service name.
 func (a *Switcher) Name() string {
-	return "azure"
+	return azureName
 }
 
 // Switch switches to the specified Azure configuration.
@@ -47,10 +47,12 @@ func (a *Switcher) Switch(ctx context.Context, config any) error {
 func (a *Switcher) GetCurrentState(ctx context.Context) (any, error) {
 	// Get current Azure subscription
 	cmd := exec.CommandContext(ctx, "az", "account", "show", "--query", "id", "-o", "tsv")
+	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
 	subscriptionOutput, _ := cmd.Output()
 
 	// Get current Azure tenant
 	cmd = exec.CommandContext(ctx, "az", "account", "show", "--query", "tenantId", "-o", "tsv")
+	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
 	tenantOutput, _ := cmd.Output()
 
 	return &environment.AzureConfig{

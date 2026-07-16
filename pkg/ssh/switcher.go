@@ -20,7 +20,7 @@ func NewSwitcher() *Switcher {
 
 // Name returns the service name.
 func (s *Switcher) Name() string {
-	return "ssh"
+	return serviceName
 }
 
 // Switch switches to the specified SSH configuration.

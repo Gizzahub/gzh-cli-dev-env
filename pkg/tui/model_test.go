@@ -254,7 +254,10 @@ func TestModel_Update_WindowSizeMsg(t *testing.T) {
 	msg := tea.WindowSizeMsg{Width: 120, Height: 40}
 	newModel, _ := model.Update(msg)
 
-	m := newModel.(*Model)
+	m, ok := newModel.(*Model)
+	if !ok {
+		t.Fatal("Update should return a *Model")
+	}
 	if m.width != 120 {
 		t.Errorf("width = %d, want 120", m.width)
 	}
@@ -271,7 +274,10 @@ func TestModel_Update_NavigationMsg(t *testing.T) {
 	msg := NavigationMsg{View: ViewSettings}
 	newModel, _ := model.Update(msg)
 
-	m := newModel.(*Model)
+	m, ok := newModel.(*Model)
+	if !ok {
+		t.Fatal("Update should return a *Model")
+	}
 	if m.currentView != ViewSettings {
 		t.Errorf("currentView = %v, want ViewSettings", m.currentView)
 	}
@@ -285,7 +291,10 @@ func TestModel_Update_ServiceSelectedMsg(t *testing.T) {
 	msg := ServiceSelectedMsg{Service: "AWS"}
 	newModel, _ := model.Update(msg)
 
-	m := newModel.(*Model)
+	m, ok := newModel.(*Model)
+	if !ok {
+		t.Fatal("Update should return a *Model")
+	}
 	if m.currentView != ViewServiceDetail {
 		t.Errorf("currentView = %v, want ViewServiceDetail", m.currentView)
 	}
@@ -315,7 +324,10 @@ func TestModel_Update_QuitMsg(t *testing.T) {
 	msg := QuitMsg{}
 	newModel, cmd := model.Update(msg)
 
-	m := newModel.(*Model)
+	m, ok := newModel.(*Model)
+	if !ok {
+		t.Fatal("Update should return a *Model")
+	}
 	if !m.quitting {
 		t.Error("quitting should be true after QuitMsg")
 	}
@@ -333,7 +345,10 @@ func TestModel_Update_ErrorMsg(t *testing.T) {
 	msg := ErrorMsg{Error: testErr}
 	newModel, _ := model.Update(msg)
 
-	m := newModel.(*Model)
+	m, ok := newModel.(*Model)
+	if !ok {
+		t.Fatal("Update should return a *Model")
+	}
 	if m.state != StateError {
 		t.Errorf("state = %v, want StateError", m.state)
 	}

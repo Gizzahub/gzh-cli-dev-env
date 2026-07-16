@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Archmagece
+// SPDX-License-Identifier: MIT
+
 // Package devenv provides development environment management functionality.
 // This library enables switching between cloud platforms (AWS, GCP, Azure),
 // container environments (Docker, Kubernetes), and SSH configurations.

@@ -14,6 +14,8 @@ import (
 	"github.com/gizzahub/gzh-cli-dev-env/pkg/status"
 )
 
+const gcpName = "gcp"
+
 // Checker implements status.ServiceChecker for Google Cloud Platform.
 type Checker struct{}
 
@@ -24,13 +26,13 @@ func NewChecker() *Checker {
 
 // Name returns the service name.
 func (g *Checker) Name() string {
-	return "gcp"
+	return gcpName
 }
 
 // CheckStatus checks GCP current status.
 func (g *Checker) CheckStatus(ctx context.Context) (*status.ServiceStatus, error) {
 	st := &status.ServiceStatus{
-		Name:        "gcp",
+		Name:        gcpName,
 		Status:      status.StatusUnknown,
 		Current:     status.CurrentConfig{},
 		Credentials: status.CredentialStatus{},
@@ -78,6 +80,7 @@ func (g *Checker) CheckStatus(ctx context.Context) (*status.ServiceStatus, error
 	if err != nil {
 		st.Status = status.StatusError
 		st.Details["credential_error"] = err.Error()
+		//nolint:nilerr // intentional: errors converted to status fields
 		return st, nil
 	}
 
@@ -159,6 +162,8 @@ func (g *Checker) getCurrentRegion(ctx context.Context) (string, error) {
 }
 
 // checkCredentials checks GCP credentials validity.
+//
+//nolint:unparam // intentional: error always nil; errors converted to status fields
 func (g *Checker) checkCredentials(ctx context.Context) (*status.CredentialStatus, error) {
 	credStatus := &status.CredentialStatus{
 		Valid: false,
@@ -170,6 +175,7 @@ func (g *Checker) checkCredentials(ctx context.Context) (*status.CredentialStatu
 	err := cmd.Run()
 	if err != nil {
 		credStatus.Warning = "Credentials invalid or expired"
+		//nolint:nilerr // intentional: errors converted to status fields
 		return credStatus, nil
 	}
 

@@ -12,8 +12,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// DefaultNamespace is the default namespace value to filter in display.
-const DefaultNamespace = "default"
+const (
+	// DefaultNamespace is the default namespace value to filter in display.
+	DefaultNamespace = "default"
+	unknownStatusStr = "Unknown"
+)
 
 // StatusTableFormatter formats status as a table.
 type StatusTableFormatter struct {
@@ -59,8 +62,8 @@ func (t *StatusTableFormatter) Format(statuses []ServiceStatus) (string, error) 
 			hasWarnings = true
 		}
 
-		sb.WriteString(fmt.Sprintf("%s │ %s │ %-20s │ %-14s │ %s\n",
-			serviceName, statusStr, currentStr, credStr, lastUsedStr))
+		fmt.Fprintf(&sb, "%s │ %s │ %-20s │ %-14s │ %s\n",
+			serviceName, statusStr, currentStr, credStr, lastUsedStr)
 	}
 
 	// Summary
@@ -73,7 +76,7 @@ func (t *StatusTableFormatter) Format(statuses []ServiceStatus) (string, error) 
 		sb.WriteString("\n")
 	}
 
-	sb.WriteString(fmt.Sprintf("Active Environments: %d/%d\n", activeCount, len(statuses)))
+	fmt.Fprintf(&sb, "Active Environments: %d/%d\n", activeCount, len(statuses))
 
 	return sb.String(), nil
 }
@@ -153,7 +156,7 @@ func (t *StatusTableFormatter) formatCredentials(creds CredentialStatus) string 
 // formatLastUsed formats the last used time.
 func (t *StatusTableFormatter) formatLastUsed(lastUsed time.Time) string {
 	if lastUsed.IsZero() {
-		return "Unknown"
+		return unknownStatusStr
 	}
 
 	duration := time.Since(lastUsed)

@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Archmagece
+// SPDX-License-Identifier: MIT
+
 // Package docker provides Docker-specific implementations for environment switching
 // and status checking.
 //
