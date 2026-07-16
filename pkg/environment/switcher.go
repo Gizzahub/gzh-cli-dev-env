@@ -293,9 +293,16 @@ func (es *EnvironmentSwitcher) executeHooks(ctx context.Context, hooks []Hook, h
 }
 
 // executeHook executes a single hook with input validation.
+// Commands run via direct exec (no shell) after ValidateHookCommand — same model as
+// gzh-cli-gitforge hooks: pipes/redirects/variables are rejected at validation time.
 func (es *EnvironmentSwitcher) executeHook(ctx context.Context, hook Hook, hookName string) error {
 	if err := ValidateHookCommand(hook.Command); err != nil {
 		return fmt.Errorf("hook '%s' validation failed: %w", hookName, err)
+	}
+
+	args := ParseHookCommand(hook.Command)
+	if len(args) == 0 {
+		return fmt.Errorf("hook '%s' validation failed: empty command after parse", hookName)
 	}
 
 	timeout := hook.Timeout
@@ -306,8 +313,8 @@ func (es *EnvironmentSwitcher) executeHook(ctx context.Context, hook Hook, hookN
 	hookCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// #nosec G204 - Hook commands are from user configuration files and validated
-	cmd := exec.CommandContext(hookCtx, "sh", "-c", hook.Command)
+	// #nosec G204 -- argv is user config, validated, and not passed through a shell
+	cmd := exec.CommandContext(hookCtx, args[0], args[1:]...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("hook '%s' failed: %w (output: %s)", hookName, err, string(output))
@@ -328,7 +335,16 @@ func (es *EnvironmentSwitcher) GetAvailableServices() []string {
 	return services
 }
 
-// ValidateHookCommand validates a hook command to prevent shell injection.
+// shellMetaChars are characters that require a shell. Hooks are executed with
+// direct exec (no sh -c), so these must be rejected rather than blocklisted.
+var shellMetaChars = []string{
+	"|", ">", "<", ";", "&", "$", "`", "\n", "\r",
+	"&&", "||", "|&", "$(", ">>", "<<",
+}
+
+// ValidateHookCommand validates a hook command for direct exec (no shell).
+// Shell metacharacters are rejected; allowed form is a single program plus args
+// with optional simple quotes (see ParseHookCommand).
 func ValidateHookCommand(command string) error {
 	if command == "" {
 		return errors.New("hook command cannot be empty")
@@ -338,23 +354,75 @@ func ValidateHookCommand(command string) error {
 		return errors.New("hook command too long (max 1000 characters)")
 	}
 
-	dangerousPatterns := []string{
-		";rm -rf", "rm -rf /", ";curl", "wget", "sudo ", "su ", "|sh", "|bash",
-		"eval ", "exec ", "`", "$(", "& ", "&&", "||", "|&",
-	}
-
-	commandLower := strings.ToLower(command)
-	for _, pattern := range dangerousPatterns {
-		if strings.Contains(commandLower, pattern) {
-			return fmt.Errorf("hook command contains potentially dangerous pattern: %s", pattern)
+	for _, meta := range shellMetaChars {
+		if strings.Contains(command, meta) {
+			return fmt.Errorf("hook command contains shell metacharacter %q — use a script instead of shell features", meta)
 		}
 	}
 
-	// \s already covers \n, so the class does not repeat it.
+	// Deny-list high-risk program names even without shell (config may be shared).
+	dangerousPrograms := []string{
+		"rm", "curl", "wget", "sudo", "su", "eval", "exec", "sh", "bash", "zsh", "python", "perl", "ruby", "node",
+	}
+	args := ParseHookCommand(command)
+	if len(args) == 0 {
+		return errors.New("hook command has no executable after parse")
+	}
+	base := strings.ToLower(args[0])
+	// basename of path
+	if i := strings.LastIndex(base, "/"); i >= 0 {
+		base = base[i+1:]
+	}
+	for _, d := range dangerousPrograms {
+		if base == d {
+			return fmt.Errorf("hook command invokes disallowed program: %s", base)
+		}
+	}
+
+	// Remaining characters after quote stripping must be conservative.
 	safePattern := regexp.MustCompile(`^[a-zA-Z0-9\s\-_./=:@\[\]{}()"']+$`)
 	if !safePattern.MatchString(command) {
 		return errors.New("hook command contains unsafe characters")
 	}
 
 	return nil
+}
+
+// ParseHookCommand splits a hook command into argv without invoking a shell.
+// Supports simple single/double quotes; does not support pipes, redirects, or expansion.
+func ParseHookCommand(cmd string) []string {
+	cmd = strings.TrimSpace(cmd)
+	if cmd == "" {
+		return nil
+	}
+
+	var args []string
+	var current strings.Builder
+	inQuote := false
+	var quoteChar rune
+
+	for _, r := range cmd {
+		switch {
+		case inQuote:
+			if r == quoteChar {
+				inQuote = false
+			} else {
+				current.WriteRune(r)
+			}
+		case r == '"' || r == '\'':
+			inQuote = true
+			quoteChar = r
+		case r == ' ' || r == '\t':
+			if current.Len() > 0 {
+				args = append(args, current.String())
+				current.Reset()
+			}
+		default:
+			current.WriteRune(r)
+		}
+	}
+	if current.Len() > 0 {
+		args = append(args, current.String())
+	}
+	return args
 }

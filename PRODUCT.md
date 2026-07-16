@@ -109,10 +109,12 @@ ______________________________________________________________________
 **Safety**
 
 - `--dry-run`, `[y/N]` 확인(`--force`로 생략), `RollbackOnError` 기본 활성
-- 훅은 차단목록 + 30초 타임아웃 + 길이 제한으로 검증한다
+- 훅은 **shell 없이 직접 exec**한다 (`ParseHookCommand` argv 분할). 셸 메타문자
+  (`| > < ; & $ \` 개행 등)와 고위험 프로그램명(rm/curl/wget/sudo/sh/bash 등)을
+  거부하며, 30초 타임아웃 + 1000자 길이 제한을 적용한다
+  (`TestValidateHookCommand_BypassAttempts`로 우회 패턴 고정)
 - **미비**: 롤백은 **인메모리 전용**이라 전환 중 크래시 시 복구 아티팩트가 없다;
-  훅 차단목록은 `sh -c` 위의 블록리스트라 우회 가능하다; `SwitchOptions.Force`는
-  라이브러리에서 읽히지 않는 죽은 필드다
+  `SwitchOptions.Force`는 라이브러리에서 읽히지 않는 죽은 필드다
 - **AWS 전환은 의미상 오작동 가능성이 높다** — `aws configure set profile X`는
   기본 프로필 블록에 `profile` 키를 쓸 뿐 활성 프로필을 바꾸지 않는다
   (활성 전환은 `AWS_PROFILE`/`--profile` 소관)

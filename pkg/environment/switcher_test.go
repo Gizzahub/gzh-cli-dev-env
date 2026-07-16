@@ -261,6 +261,60 @@ func TestValidateHookCommand_TooLong(t *testing.T) {
 	}
 }
 
+// TestValidateHookCommand_BypassAttempts records former blocklist bypasses.
+// Before direct-exec + shell-meta rejection, "curl http://..." passed validation
+// because only ";curl" was blocklisted. All of these must now fail.
+func TestValidateHookCommand_BypassAttempts(t *testing.T) {
+	bypasses := []struct {
+		name    string
+		command string
+	}{
+		{"curl without leading semicolon", "curl http://example.com/x"},
+		{"rm without semicolon prefix", "rm -rf /tmp/marker"},
+		{"pipe without |sh substring form", "cat file | head"},
+		{"redirect", "echo hi > /tmp/out"},
+		{"newline command separator", "echo hello\necho world"},
+		{"command substitution dollars", "echo $(whoami)"},
+		{"backtick substitution", "echo `whoami`"},
+		{"chained with semicolon", "true; false"},
+		{"background ampersand", "sleep 1 &"},
+		{"shell as program", "sh -c echo hi"},
+		{"bash as program", "bash -c id"},
+	}
+
+	for _, tt := range bypasses {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := ValidateHookCommand(tt.command); err == nil {
+				t.Fatalf("expected block for former bypass %q, got nil", tt.command)
+			}
+		})
+	}
+}
+
+func TestParseHookCommand(t *testing.T) {
+	tests := []struct {
+		in   string
+		want []string
+	}{
+		{"echo hello", []string{"echo", "hello"}},
+		{"/usr/bin/test -f /path", []string{"/usr/bin/test", "-f", "/path"}},
+		{`echo "hello world"`, []string{"echo", "hello world"}},
+		{"  make test  ", []string{"make", "test"}},
+		{"", nil},
+	}
+	for _, tt := range tests {
+		got := ParseHookCommand(tt.in)
+		if len(got) != len(tt.want) {
+			t.Fatalf("ParseHookCommand(%q) = %v, want %v", tt.in, got, tt.want)
+		}
+		for i := range got {
+			if got[i] != tt.want[i] {
+				t.Fatalf("ParseHookCommand(%q)[%d] = %q, want %q", tt.in, i, got[i], tt.want[i])
+			}
+		}
+	}
+}
+
 // TestEnvironment_Validate tests environment validation.
 func TestEnvironment_Validate(t *testing.T) {
 	tests := []struct {
