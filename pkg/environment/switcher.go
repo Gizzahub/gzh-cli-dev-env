@@ -72,14 +72,12 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 
 	previousStates := make(map[string]any)
 
-	if !options.DryRun {
-		if err := es.executeHooks(ctx, env.PreHooks, "pre-hook"); err != nil {
-			return &SwitchResult{
-				Success:  false,
-				Duration: time.Since(startTime),
-				Errors:   []SwitchError{{Service: "pre-hook", Error: err.Error(), Time: time.Now()}},
-			}, err
-		}
+	if err := es.runHooks(ctx, env.PreHooks, "pre-hook", options); err != nil {
+		return &SwitchResult{
+			Success:  false,
+			Duration: time.Since(startTime),
+			Errors:   []SwitchError{{Service: "pre-hook", Error: err.Error(), Time: time.Now()}},
+		}, err
 	}
 
 	totalServices := len(env.Services)
@@ -122,14 +120,12 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 		}
 	}
 
-	if !options.DryRun {
-		if err := es.executeHooks(ctx, env.PostHooks, "post-hook"); err != nil {
-			result.Errors = append(result.Errors, SwitchError{
-				Service: "post-hook",
-				Error:   err.Error(),
-				Time:    time.Now(),
-			})
-		}
+	if err := es.runHooks(ctx, env.PostHooks, "post-hook", options); err != nil {
+		result.Errors = append(result.Errors, SwitchError{
+			Service: "post-hook",
+			Error:   err.Error(),
+			Time:    time.Now(),
+		})
 	}
 
 	result.Duration = time.Since(startTime)
@@ -263,6 +259,17 @@ func (es *EnvironmentSwitcher) rollbackServices(ctx context.Context, previousSta
 	}
 }
 
+// runHooks executes hooks unless this is a dry run. Hooks are arbitrary shell
+// commands, so running them would make --dry-run mutate the machine it claims to
+// leave untouched. Keeping the check here means every hook call site inherits it.
+func (es *EnvironmentSwitcher) runHooks(ctx context.Context, hooks []Hook, hookType string, options SwitchOptions) error {
+	if options.DryRun {
+		return nil
+	}
+
+	return es.executeHooks(ctx, hooks, hookType)
+}
+
 // executeHooks executes pre or post hooks.
 func (es *EnvironmentSwitcher) executeHooks(ctx context.Context, hooks []Hook, hookType string) error {
 	for i, hook := range hooks {
@@ -334,7 +341,8 @@ func ValidateHookCommand(command string) error {
 		}
 	}
 
-	safePattern := regexp.MustCompile(`^[a-zA-Z0-9\s\-_./=:@\[\]{}()\n"']+$`)
+	// \s already covers \n, so the class does not repeat it.
+	safePattern := regexp.MustCompile(`^[a-zA-Z0-9\s\-_./=:@\[\]{}()"']+$`)
 	if !safePattern.MatchString(command) {
 		return errors.New("hook command contains unsafe characters")
 	}
