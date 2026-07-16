@@ -45,8 +45,10 @@ G2. **Buildable and testable**
 - 현재 **충족** (2026-07-16). 제거된 `GOEXPERIMENT=rangefunc` 설정과 본 리포에
   없는 `./cmd/gzh-git` 빌드 대상이 원인이었다. 라이브러리이므로 `go build ./...`로
   전환했다. CI test 잡 green
-- 잔여: 같은 설정 오류가 golangci-lint의 패키지 로딩을 깨뜨려 린터가 0건을 보고하고
-  있었다. 이제 린터가 동작하며 **기존 이슈 100건**이 드러나 **CI lint 잡은 여전히 red다**
+- `make lint`도 **충족** (2026-07-16). 같은 설정 오류가 golangci-lint의 패키지
+  로딩까지 깨뜨려 린터가 0건을 보고하고 있었다 — 침묵이 통과로 오독되던 상태다.
+  린터를 되살리자 드러난 111건을 해소했다 (오탐은 설정 정렬, 나머지는 수정).
+  **CI 3개 잡(test·lint·vulncheck) 전부 green**
 
 G3. **Concurrency safety**
 
@@ -58,8 +60,12 @@ G3. **Concurrency safety**
 G4. **Dry-run honesty**
 
 - Target: `--dry-run`은 어떤 부작용도 만들지 않는다
-- 현재 **미충족** — pre/post 셸 훅이 dry-run 가드 없이 실제 실행된다. CLI는
-  "DRY-RUN MODE: No changes will be made"를 출력하지만 훅이 있으면 그 문구는 거짓이다
+- 현재 **충족** (2026-07-16). pre/post 셸 훅이 dry-run 가드 없이 실행되어
+  "No changes will be made"가 거짓이었다. 훅 실행을 `runHooks`로 모아 dry-run에서
+  건너뛰고, 실행됐을 훅은 "would run"으로 보고한다.
+  회귀 테스트가 훅으로 마커 파일을 만들어 부작용을 직접 관측한다 (가드 없는
+  코드에서 실제로 FAIL함을 확인)
+- 잔여: 롤백은 여전히 **인메모리 전용**이다 (아래 Safety 참조) — dry-run과 무관
 
 G5. **Test reliability**
 
@@ -99,9 +105,9 @@ ______________________________________________________________________
 
 - `--dry-run`, `[y/N]` 확인(`--force`로 생략), `RollbackOnError` 기본 활성
 - 훅은 차단목록 + 30초 타임아웃 + 길이 제한으로 검증한다
-- **미비**: dry-run이 훅을 실행한다 (G4); 롤백은 **인메모리 전용**이라 전환 중
-  크래시 시 복구 아티팩트가 없다; 훅 차단목록은 `sh -c` 위의 블록리스트라 우회
-  가능하다; `SwitchOptions.Force`는 라이브러리에서 읽히지 않는 죽은 필드다
+- **미비**: 롤백은 **인메모리 전용**이라 전환 중 크래시 시 복구 아티팩트가 없다;
+  훅 차단목록은 `sh -c` 위의 블록리스트라 우회 가능하다; `SwitchOptions.Force`는
+  라이브러리에서 읽히지 않는 죽은 필드다
 - **AWS 전환은 의미상 오작동 가능성이 높다** — `aws configure set profile X`는
   기본 프로필 블록에 `profile` 키를 쓸 뿐 활성 프로필을 바꾸지 않는다
   (활성 전환은 `AWS_PROFILE`/`--profile` 소관)
@@ -119,7 +125,7 @@ ______________________________________________________________________
 
 - GUIDELINES §3 베이스라인 충족 — `Makefile`·`.golangci.yml`(v2)·CI·`LICENSE`(MIT,
   소스의 SPDX 헤더 및 README 주장과 일치)·문서·본 PRODUCT.md 보유.
-  CI는 test·vulncheck green, **lint는 red다** (G2)
+  CI 3개 잡(test·lint·vulncheck) 전부 green (G2)
 
 ______________________________________________________________________
 
@@ -127,8 +133,7 @@ ______________________________________________________________________
 
 **Build and Lint**
 
-- `make build` · `make test` 통과 (G2 — 현재 충족)
-- `make lint` 통과 (G2 — **현재 미충족**: 기존 이슈 100건)
+- `make build` · `make test` · `make lint` 통과 (G2 — 현재 충족)
 
 **Concurrency**
 
