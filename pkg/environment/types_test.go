@@ -237,7 +237,6 @@ func TestSwitchResult_Failure(t *testing.T) {
 func TestSwitchOptions_Fields(t *testing.T) {
 	opts := SwitchOptions{
 		DryRun:          true,
-		Force:           false,
 		Parallel:        true,
 		RollbackOnError: true,
 		Timeout:         5 * time.Minute,
@@ -245,9 +244,6 @@ func TestSwitchOptions_Fields(t *testing.T) {
 
 	if !opts.DryRun {
 		t.Error("DryRun should be true")
-	}
-	if opts.Force {
-		t.Error("Force should be false")
 	}
 	if !opts.RollbackOnError {
 		t.Error("RollbackOnError should be true")

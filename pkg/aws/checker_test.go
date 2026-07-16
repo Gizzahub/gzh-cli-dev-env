@@ -96,15 +96,52 @@ func TestChecker_getCurrentProfile_WithEnvVar(t *testing.T) {
 	checker := NewChecker()
 
 	// Set AWS_PROFILE environment variable
-	originalProfile := os.Getenv("AWS_PROFILE")
-	defer os.Setenv("AWS_PROFILE", originalProfile)
-
-	testProfile := "test-profile"
-	os.Setenv("AWS_PROFILE", testProfile)
+	t.Setenv("AWS_PROFILE", "test-profile")
 
 	profile := checker.getCurrentProfile()
-	if profile != testProfile {
-		t.Errorf("getCurrentProfile() = %q, want %q", profile, testProfile)
+	if profile != "test-profile" {
+		t.Errorf("getCurrentProfile() = %q, want %q", profile, "test-profile")
+	}
+}
+
+// TestChecker_getCurrentProfile_FromStateFile_whenEnvEmpty matches switcher resolution order.
+func TestChecker_getCurrentProfile_FromStateFile_whenEnvEmpty(t *testing.T) {
+	// Given
+	dir := t.TempDir()
+	orig := userConfigDir
+	userConfigDir = func() (string, error) { return dir, nil }
+	t.Cleanup(func() { userConfigDir = orig })
+	t.Setenv("AWS_PROFILE", "")
+	if err := writeActiveProfile("checker-state-profile"); err != nil {
+		t.Fatalf("writeActiveProfile: %v", err)
+	}
+	checker := NewChecker()
+
+	// When
+	profile := checker.getCurrentProfile()
+
+	// Then
+	if profile != "checker-state-profile" {
+		t.Errorf("getCurrentProfile() = %q, want %q", profile, "checker-state-profile")
+	}
+}
+
+// TestChecker_getCurrentProfile_Empty_whenNeitherSet returns empty without default fallback.
+func TestChecker_getCurrentProfile_Empty_whenNeitherSet(t *testing.T) {
+	// Given
+	dir := t.TempDir()
+	orig := userConfigDir
+	userConfigDir = func() (string, error) { return dir, nil }
+	t.Cleanup(func() { userConfigDir = orig })
+	t.Setenv("AWS_PROFILE", "")
+	checker := NewChecker()
+
+	// When
+	profile := checker.getCurrentProfile()
+
+	// Then
+	if profile != "" {
+		t.Errorf("getCurrentProfile() = %q, want empty", profile)
 	}
 }
 

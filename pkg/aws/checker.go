@@ -125,20 +125,9 @@ func (a *Checker) isCLIAvailable() bool {
 }
 
 // getCurrentProfile gets the current AWS profile.
+// Order matches Switcher.GetCurrentState: AWS_PROFILE → state file → empty.
 func (a *Checker) getCurrentProfile() string {
-	// Check AWS_PROFILE environment variable
-	if profile := os.Getenv("AWS_PROFILE"); profile != "" {
-		return profile
-	}
-
-	// Check AWS config file for default profile
-	//nolint:noctx // function lacks context parameter; cannot use CommandContext
-	cmd := exec.Command("aws", "configure", "list", "--profile", "default")
-	if err := cmd.Run(); err == nil {
-		return DefaultProfile
-	}
-
-	return ""
+	return resolveActiveProfile()
 }
 
 // getCurrentRegion gets the current AWS region.
@@ -153,9 +142,13 @@ func (a *Checker) getCurrentRegion() string {
 		return region
 	}
 
-	// Try to get from AWS config
+	// Try to get from AWS config for the active profile
+	args := []string{"configure", "get", "region"}
+	if profile := resolveActiveProfile(); profile != "" {
+		args = append(args, "--profile", profile)
+	}
 	//nolint:noctx // function lacks context parameter; cannot use CommandContext
-	cmd := exec.Command("aws", "configure", "get", "region")
+	cmd := exec.Command("aws", args...)
 	output, err := cmd.Output()
 	if err == nil && len(output) > 0 {
 		return strings.TrimSpace(string(output))

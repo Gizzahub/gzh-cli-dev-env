@@ -12,6 +12,9 @@ import (
 	"github.com/gizzahub/gzh-cli-dev-env/pkg/environment"
 )
 
+// commandContext builds an exec.Cmd. Overridable in tests to capture argv.
+var commandContext = exec.CommandContext
+
 // Switcher implements environment.ServiceSwitcher for AWS.
 type Switcher struct{}
 
@@ -25,28 +28,37 @@ func (a *Switcher) Name() string {
 	return pkgName
 }
 
-// Switch switches to the specified AWS configuration.
+// Switch activates the specified AWS configuration.
+//
+// Profile activation is persisted to a state file under the user config dir
+// (not via `aws configure set profile`, which does not change the active
+// profile). Callers that spawn child processes should also export AWS_PROFILE
+// so the AWS CLI/SDK pick up the same profile.
+//
+// Region is written with `aws configure set region` scoped to --profile when
+// a profile is provided.
 func (a *Switcher) Switch(ctx context.Context, config any) error {
 	awsConfig, ok := config.(*environment.AWSConfig)
 	if !ok {
 		return fmt.Errorf("invalid AWS configuration type")
 	}
 
-	// Set AWS profile
+	// Persist active profile. This is the real activation signal for this tool.
+	// Do NOT use `aws configure set profile` — that only writes a key into the
+	// default profile block and does not change which profile is active.
 	if awsConfig.Profile != "" {
-		cmd := exec.CommandContext(ctx, "aws", "configure", "set", "profile", awsConfig.Profile)
-		if err := cmd.Run(); err != nil {
+		if err := writeActiveProfile(awsConfig.Profile); err != nil {
 			return fmt.Errorf("failed to set AWS profile: %w", err)
 		}
 	}
 
-	// Set AWS region
+	// Set region on the target profile (or default when profile is empty).
 	if awsConfig.Region != "" {
 		args := []string{"configure", "set", "region", awsConfig.Region}
 		if awsConfig.Profile != "" {
 			args = append(args, "--profile", awsConfig.Profile)
 		}
-		cmd := exec.CommandContext(ctx, "aws", args...)
+		cmd := commandContext(ctx, "aws", args...)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to set AWS region: %w", err)
 		}
@@ -56,19 +68,20 @@ func (a *Switcher) Switch(ctx context.Context, config any) error {
 }
 
 // GetCurrentState retrieves the current AWS configuration state.
+// Profile resolution order: AWS_PROFILE env → state file → empty.
 func (a *Switcher) GetCurrentState(ctx context.Context) (any, error) {
-	// Get current AWS profile
-	cmd := exec.CommandContext(ctx, "aws", "configure", "get", "profile")
-	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
-	profileOutput, _ := cmd.Output()
+	profile := resolveActiveProfile()
 
-	// Get current AWS region
-	cmd = exec.CommandContext(ctx, "aws", "configure", "get", "region")
+	args := []string{"configure", "get", "region"}
+	if profile != "" {
+		args = append(args, "--profile", profile)
+	}
+	cmd := commandContext(ctx, "aws", args...)
 	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
 	regionOutput, _ := cmd.Output()
 
 	return &environment.AWSConfig{
-		Profile: strings.TrimSpace(string(profileOutput)),
+		Profile: profile,
 		Region:  strings.TrimSpace(string(regionOutput)),
 	}, nil
 }

@@ -98,10 +98,9 @@ func (opts *switchAllOptions) run(ctx context.Context) error {
 	// Set up progress reporting
 	switcher.SetProgressCallback(opts.reportProgress)
 
-	// Prepare switch options
+	// Prepare switch options (--force is CLI confirmation only, not a library option)
 	switchOptions := environment.SwitchOptions{
 		DryRun:          opts.dryRun,
-		Force:           opts.force,
 		Parallel:        opts.parallel,
 		RollbackOnError: true,
 		Timeout:         opts.timeout,

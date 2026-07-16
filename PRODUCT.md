@@ -3,7 +3,7 @@
 **Project**: gzh-cli-dev-env (library — `NewRootCmd()`, 바이너리 없음)
 **Doc Type**: Goals + Constraints + Quality Gates
 **Status**: Active — 추출 진행 중 (gzh-cli 기본 경로 아님)
-**Last Updated**: 2026-07-16
+**Last Updated**: 2026-07-17
 
 ______________________________________________________________________
 
@@ -36,8 +36,9 @@ G1. **Service parity (조회 = 전환)**
 
 - Target: 6개 서비스(aws·gcp·azure·docker·kubernetes·ssh) 모두 checker + switcher
   실동작
-- 현재 checker **6/6**, switcher **5/6** — SSH switcher는 설정을 버리는 no-op
-  스텁이며 `GetCurrentState`가 `"default"`를 하드코딩 반환한다
+- 현재 checker **6/6**, switcher **6/6** — SSH switcher는 `~/.ssh/config` 존재 여부와
+  경로를 정직하게 보고하고, 설정 경로를 검증·활성화한다. managed symlink 레이아웃에서
+  전환·롤백이 동작하며, 일반 파일을 덮어쓰지 않고 실패를 반환한다 (silent discard 없음)
 
 G2. **Buildable and testable**
 
@@ -113,11 +114,15 @@ ______________________________________________________________________
   (`| > < ; & $ \` 개행 등)와 고위험 프로그램명(rm/curl/wget/sudo/sh/bash 등)을
   거부하며, 30초 타임아웃 + 1000자 길이 제한을 적용한다
   (`TestValidateHookCommand_BypassAttempts`로 우회 패턴 고정)
-- **미비**: 롤백은 **인메모리 전용**이라 전환 중 크래시 시 복구 아티팩트가 없다;
-  `SwitchOptions.Force`는 라이브러리에서 읽히지 않는 죽은 필드다
-- **AWS 전환은 의미상 오작동 가능성이 높다** — `aws configure set profile X`는
-  기본 프로필 블록에 `profile` 키를 쓸 뿐 활성 프로필을 바꾸지 않는다
-  (활성 전환은 `AWS_PROFILE`/`--profile` 소관)
+- **미비**: 롤백은 **인메모리 전용**이라 전환 중 크래시 시 복구 아티팩트가 없다
+- **CLI `--force`**: 확인 프롬프트 생략 전용. 라이브러리 `SwitchOptions`에는 포함하지
+  않는다 (죽은 필드 제거 완료)
+- **AWS 프로필 전환** — `Switch`는 `aws configure set profile`을 쓰지 않는다.
+  활성 프로필은 `~/.config/gzh-dev-env/aws-active-profile`(또는 OS user config dir
+  하위 동등 경로) 상태 파일에 기록한다. 조회 우선순위는 `AWS_PROFILE` env →
+  상태 파일 → 빈 값. 프로세스 환경 변수는 자식 프로세스에 자동 전파되지 않으므로,
+  호출자는 자식 프로세스용으로 `AWS_PROFILE`을 export해야 한다. region은
+  `aws configure set region`(+ `--profile`)으로만 설정한다
 
 **Integration Status**
 
@@ -159,7 +164,7 @@ ______________________________________________________________________
 ## Decision Rules
 
 - **새 서비스는 checker + switcher + Rollback 실구현을 함께 포함해야 한다** —
-  SSH 같은 no-op 스텁을 반복하지 않는다 (G1)
+  성공을 가장하는 no-op 스텁을 반복하지 않는다 (G1)
 - **동시성 코드는 `-race` 통과 없이 머지될 수 없다** (G3)
 - `--dry-run`을 광고하는 실행 경로는 부작용 0을 증명해야 한다 (G4).
   증명은 관측으로 한다 — 부작용을 실제로 관측하는 테스트가 가드 없는 코드에서

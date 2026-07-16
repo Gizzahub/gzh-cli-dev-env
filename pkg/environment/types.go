@@ -99,9 +99,9 @@ type SwitchResult struct {
 }
 
 // SwitchOptions contains options for environment switching.
+// Confirmation skipping (--force) is a CLI concern, not a library option.
 type SwitchOptions struct {
 	DryRun          bool
-	Force           bool
 	Parallel        bool
 	RollbackOnError bool
 	Timeout         time.Duration
