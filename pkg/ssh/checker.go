@@ -21,6 +21,12 @@ const (
 	serviceName = "ssh"
 )
 
+// commandContext builds an exec.Cmd. Overridable in tests to avoid real ssh-add.
+var commandContext = exec.CommandContext
+
+// lookPath locates an executable. Overridable in tests.
+var lookPath = exec.LookPath
+
 // Checker implements status.ServiceChecker for SSH.
 type Checker struct{}
 
@@ -94,7 +100,7 @@ func (s *Checker) CheckHealth(ctx context.Context) (*status.HealthStatus, error)
 	}
 
 	// Check SSH agent connectivity
-	cmd := exec.CommandContext(ctx, "ssh-add", "-l")
+	cmd := commandContext(ctx, "ssh-add", "-l")
 	output, err := cmd.Output()
 	health.Duration = time.Since(start)
 
@@ -124,7 +130,7 @@ func (s *Checker) CheckHealth(ctx context.Context) (*status.HealthStatus, error)
 
 // isCLIAvailable checks if SSH is installed.
 func (s *Checker) isCLIAvailable() bool {
-	_, err := exec.LookPath("ssh")
+	_, err := lookPath("ssh")
 	return err == nil
 }
 
@@ -136,7 +142,7 @@ func (s *Checker) checkSSHAgent(ctx context.Context) bool {
 	}
 
 	// Try to connect to SSH agent
-	cmd := exec.CommandContext(ctx, "ssh-add", "-l")
+	cmd := commandContext(ctx, "ssh-add", "-l")
 	err := cmd.Run()
 	// ssh-add -l returns 0 if keys are loaded, 1 if no keys, 2 if agent not running
 	var exitErr *exec.ExitError
@@ -148,7 +154,7 @@ func (s *Checker) checkSSHAgent(ctx context.Context) bool {
 
 // getLoadedKeys gets the list of loaded SSH keys.
 func (s *Checker) getLoadedKeys(ctx context.Context) ([]string, error) {
-	cmd := exec.CommandContext(ctx, "ssh-add", "-l")
+	cmd := commandContext(ctx, "ssh-add", "-l")
 	output, err := cmd.Output()
 	if err != nil {
 		// Check if it's "no keys loaded" vs actual error

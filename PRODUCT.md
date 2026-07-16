@@ -114,7 +114,11 @@ ______________________________________________________________________
   (`| > < ; & $ \` 개행 등)와 고위험 프로그램명(rm/curl/wget/sudo/sh/bash 등)을
   거부하며, 30초 타임아웃 + 1000자 길이 제한을 적용한다
   (`TestValidateHookCommand_BypassAttempts`로 우회 패턴 고정)
-- **미비**: 롤백은 **인메모리 전용**이라 전환 중 크래시 시 복구 아티팩트가 없다
+- **롤백 저널 (crash recovery)**: 전환 직전 `previousStates`를
+  `{UserConfigDir}/gzh-dev-env/rollback-journal.json`에 기록하고, 성공 완료 시
+  제거한다. 잔존 저널은 `DetectStaleJournal`이 경고 문자열을 반환하고,
+  `RecoverFromJournal`로 복구한다. dry-run은 저널을 쓰지 않는다
+  (`WriteJournal` 내부 가드). 저널에는 프로필·경로·리전 등 안전 필드만 저장한다
 - **CLI `--force`**: 확인 프롬프트 생략 전용. 라이브러리 `SwitchOptions`에는 포함하지
   않는다 (죽은 필드 제거 완료)
 - **AWS 프로필 전환** — `Switch`는 `aws configure set profile`을 쓰지 않는다.

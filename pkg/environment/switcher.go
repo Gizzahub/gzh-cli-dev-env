@@ -72,6 +72,12 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 
 	previousStates := make(map[string]any)
 
+	journalPath, journalPathErr := DefaultJournalPath()
+	if journalPathErr != nil {
+		// Non-fatal: switch can proceed without crash-recovery journal.
+		journalPath = ""
+	}
+
 	if err := es.runHooks(ctx, env.PreHooks, "pre-hook", options); err != nil {
 		return &SwitchResult{
 			Success:  false,
@@ -85,7 +91,7 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 
 	for _, group := range groups {
 		if options.Parallel && len(group.Services) > 1 {
-			if err := es.switchServicesParallel(ctx, env, group.Services, previousStates, result, options); err != nil {
+			if err := es.switchServicesParallel(ctx, env, group.Services, previousStates, result, options, journalPath); err != nil {
 				if options.RollbackOnError {
 					es.rollbackServices(ctx, previousStates, result, options)
 				}
@@ -95,7 +101,7 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 			}
 		} else {
 			for _, serviceName := range group.Services {
-				if err := es.switchSingleService(ctx, env, serviceName, previousStates, result, options); err != nil {
+				if err := es.switchSingleService(ctx, env, serviceName, previousStates, result, options, journalPath); err != nil {
 					if options.RollbackOnError {
 						es.rollbackServices(ctx, previousStates, result, options)
 					}
@@ -128,12 +134,18 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 		})
 	}
 
+	// Successful completion: remove crash-recovery journal.
+	if journalPath != "" {
+		_ = ClearJournal(journalPath)
+	}
+
 	result.Duration = time.Since(startTime)
 	return result, nil
 }
 
 // switchSingleService switches a single service.
-func (es *EnvironmentSwitcher) switchSingleService(ctx context.Context, env *Environment, serviceName string, previousStates map[string]any, result *SwitchResult, options SwitchOptions) error {
+// journalPath is the rollback journal location; empty disables disk persistence.
+func (es *EnvironmentSwitcher) switchSingleService(ctx context.Context, env *Environment, serviceName string, previousStates map[string]any, result *SwitchResult, options SwitchOptions, journalPath string) error {
 	es.mu.RLock()
 	switcher, exists := es.serviceSwitchers[serviceName]
 	es.mu.RUnlock()
@@ -154,7 +166,20 @@ func (es *EnvironmentSwitcher) switchSingleService(ctx context.Context, env *Env
 
 	es.stateMu.Lock()
 	previousStates[serviceName] = currentState
+	// Snapshot under lock so parallel writers see a consistent map for the journal.
+	statesSnapshot := make(map[string]any, len(previousStates))
+	for k, v := range previousStates {
+		statesSnapshot[k] = v
+	}
 	es.stateMu.Unlock()
+
+	// Persist previous states before Switch so a crash mid-switch leaves a recovery artifact.
+	// WriteJournal owns the dry-run guard (no file on DryRun).
+	if journalPath != "" {
+		if err := WriteJournal(journalPath, options.DryRun, env.Name, statesSnapshot); err != nil {
+			return fmt.Errorf("failed to persist rollback journal for %s: %w", serviceName, err)
+		}
+	}
 
 	var config any
 	switch serviceName {
@@ -201,7 +226,7 @@ func (es *EnvironmentSwitcher) switchSingleService(ctx context.Context, env *Env
 }
 
 // switchServicesParallel switches multiple services in parallel.
-func (es *EnvironmentSwitcher) switchServicesParallel(ctx context.Context, env *Environment, serviceNames []string, previousStates map[string]any, result *SwitchResult, options SwitchOptions) error {
+func (es *EnvironmentSwitcher) switchServicesParallel(ctx context.Context, env *Environment, serviceNames []string, previousStates map[string]any, result *SwitchResult, options SwitchOptions, journalPath string) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(serviceNames))
 
@@ -209,7 +234,7 @@ func (es *EnvironmentSwitcher) switchServicesParallel(ctx context.Context, env *
 		wg.Add(1)
 		go func(name string) {
 			defer wg.Done()
-			if err := es.switchSingleService(ctx, env, name, previousStates, result, options); err != nil {
+			if err := es.switchSingleService(ctx, env, name, previousStates, result, options, journalPath); err != nil {
 				errChan <- err
 			}
 		}(serviceName)

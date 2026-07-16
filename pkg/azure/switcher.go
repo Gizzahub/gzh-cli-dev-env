@@ -12,6 +12,12 @@ import (
 	"github.com/gizzahub/gzh-cli-dev-env/pkg/environment"
 )
 
+// commandContext builds an exec.Cmd. Overridable in tests to avoid real az CLI.
+var commandContext = exec.CommandContext
+
+// lookPath locates an executable. Overridable in tests.
+var lookPath = exec.LookPath
+
 // Switcher implements environment.ServiceSwitcher for Azure.
 type Switcher struct{}
 
@@ -34,7 +40,7 @@ func (a *Switcher) Switch(ctx context.Context, config any) error {
 
 	// Set Azure subscription
 	if azureConfig.Subscription != "" {
-		cmd := exec.CommandContext(ctx, "az", "account", "set", "--subscription", azureConfig.Subscription)
+		cmd := commandContext(ctx, "az", "account", "set", "--subscription", azureConfig.Subscription)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to set Azure subscription: %w", err)
 		}
@@ -46,12 +52,12 @@ func (a *Switcher) Switch(ctx context.Context, config any) error {
 // GetCurrentState retrieves the current Azure configuration state.
 func (a *Switcher) GetCurrentState(ctx context.Context) (any, error) {
 	// Get current Azure subscription
-	cmd := exec.CommandContext(ctx, "az", "account", "show", "--query", "id", "-o", "tsv")
+	cmd := commandContext(ctx, "az", "account", "show", "--query", "id", "-o", "tsv")
 	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
 	subscriptionOutput, _ := cmd.Output()
 
 	// Get current Azure tenant
-	cmd = exec.CommandContext(ctx, "az", "account", "show", "--query", "tenantId", "-o", "tsv")
+	cmd = commandContext(ctx, "az", "account", "show", "--query", "tenantId", "-o", "tsv")
 	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
 	tenantOutput, _ := cmd.Output()
 

@@ -98,7 +98,7 @@ func (a *Checker) CheckHealth(ctx context.Context) (*status.HealthStatus, error)
 	}
 
 	// Test Azure connectivity with az account show
-	cmd := exec.CommandContext(ctx, "az", "account", "show", "--output", "json")
+	cmd := commandContext(ctx, "az", "account", "show", "--output", "json")
 	output, err := cmd.Output()
 	health.Duration = time.Since(start)
 
@@ -121,13 +121,13 @@ func (a *Checker) CheckHealth(ctx context.Context) (*status.HealthStatus, error)
 
 // isCLIAvailable checks if Azure CLI is installed.
 func (a *Checker) isCLIAvailable() bool {
-	_, err := exec.LookPath("az")
+	_, err := lookPath("az")
 	return err == nil
 }
 
 // getCurrentSubscription gets the current Azure subscription.
 func (a *Checker) getCurrentSubscription(ctx context.Context) (string, error) {
-	cmd := exec.CommandContext(ctx, "az", "account", "show", "--query", "name", "--output", "tsv")
+	cmd := commandContext(ctx, "az", "account", "show", "--query", "name", "--output", "tsv")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -137,7 +137,7 @@ func (a *Checker) getCurrentSubscription(ctx context.Context) (string, error) {
 
 // getCurrentAccount gets the current Azure account.
 func (a *Checker) getCurrentAccount(ctx context.Context) (string, error) {
-	cmd := exec.CommandContext(ctx, "az", "account", "show", "--query", "user.name", "--output", "tsv")
+	cmd := commandContext(ctx, "az", "account", "show", "--query", "user.name", "--output", "tsv")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -155,7 +155,7 @@ func (a *Checker) checkCredentials(ctx context.Context) (*status.CredentialStatu
 	}
 
 	// Test credentials with az account show
-	cmd := exec.CommandContext(ctx, "az", "account", "show")
+	cmd := commandContext(ctx, "az", "account", "show")
 	err := cmd.Run()
 	if err != nil {
 		credStatus.Warning = "Credentials invalid or expired"
@@ -166,7 +166,7 @@ func (a *Checker) checkCredentials(ctx context.Context) (*status.CredentialStatu
 	credStatus.Valid = true
 
 	// Check authentication method
-	cmd = exec.CommandContext(ctx, "az", "account", "show", "--query", "user.type", "--output", "tsv")
+	cmd = commandContext(ctx, "az", "account", "show", "--query", "user.type", "--output", "tsv")
 	output, err := cmd.Output()
 	if err == nil {
 		userType := strings.TrimSpace(string(output))

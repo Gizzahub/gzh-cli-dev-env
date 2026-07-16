@@ -12,6 +12,12 @@ import (
 	"github.com/gizzahub/gzh-cli-dev-env/pkg/environment"
 )
 
+// commandContext builds an exec.Cmd. Overridable in tests to avoid real kubectl.
+var commandContext = exec.CommandContext
+
+// lookPath locates an executable. Overridable in tests.
+var lookPath = exec.LookPath
+
 // Switcher implements environment.ServiceSwitcher for Kubernetes.
 type Switcher struct{}
 
@@ -34,7 +40,7 @@ func (k *Switcher) Switch(ctx context.Context, config any) error {
 
 	// Set Kubernetes context
 	if kubernetesConfig.Context != "" {
-		cmd := exec.CommandContext(ctx, "kubectl", "config", "use-context", kubernetesConfig.Context)
+		cmd := commandContext(ctx, "kubectl", "config", "use-context", kubernetesConfig.Context)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to set Kubernetes context: %w", err)
 		}
@@ -42,7 +48,7 @@ func (k *Switcher) Switch(ctx context.Context, config any) error {
 
 	// Set Kubernetes namespace
 	if kubernetesConfig.Namespace != "" {
-		cmd := exec.CommandContext(ctx, "kubectl", "config", "set-context", "--current", "--namespace", kubernetesConfig.Namespace)
+		cmd := commandContext(ctx, "kubectl", "config", "set-context", "--current", "--namespace", kubernetesConfig.Namespace)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to set Kubernetes namespace: %w", err)
 		}
@@ -54,11 +60,11 @@ func (k *Switcher) Switch(ctx context.Context, config any) error {
 // GetCurrentState retrieves the current Kubernetes configuration state.
 func (k *Switcher) GetCurrentState(ctx context.Context) (any, error) {
 	// Get current Kubernetes context
-	cmd := exec.CommandContext(ctx, "kubectl", "config", "current-context")
+	cmd := commandContext(ctx, "kubectl", "config", "current-context")
 	contextOutput, _ := cmd.Output() //nolint:errcheck // Error ignored; empty string used on failure
 
 	// Get current namespace
-	cmd = exec.CommandContext(ctx, "kubectl", "config", "view", "--minify", "--output", "jsonpath={..namespace}")
+	cmd = commandContext(ctx, "kubectl", "config", "view", "--minify", "--output", "jsonpath={..namespace}")
 	namespaceOutput, _ := cmd.Output() //nolint:errcheck // Error ignored; empty string used on failure
 
 	return &environment.KubernetesConfig{

@@ -103,7 +103,7 @@ func (k *Checker) CheckHealth(ctx context.Context) (*status.HealthStatus, error)
 	}
 
 	// Test cluster connectivity with kubectl cluster-info
-	cmd := exec.CommandContext(ctx, "kubectl", "cluster-info", "--request-timeout=10s")
+	cmd := commandContext(ctx, "kubectl", "cluster-info", "--request-timeout=10s")
 	output, err := cmd.Output()
 	health.Duration = time.Since(start)
 
@@ -122,7 +122,7 @@ func (k *Checker) CheckHealth(ctx context.Context) (*status.HealthStatus, error)
 	health.Details["cluster_info"] = string(output)
 
 	// Additional check: get node status
-	cmd = exec.CommandContext(ctx, "kubectl", "get", "nodes", "--no-headers", "-o", "custom-columns=NAME:.metadata.name,STATUS:.status.conditions[?(@.type==\"Ready\")].status")
+	cmd = commandContext(ctx, "kubectl", "get", "nodes", "--no-headers", "-o", "custom-columns=NAME:.metadata.name,STATUS:.status.conditions[?(@.type==\"Ready\")].status")
 	nodeOutput, err := cmd.Output()
 	if err == nil {
 		health.Details["node_status"] = string(nodeOutput)
@@ -133,13 +133,13 @@ func (k *Checker) CheckHealth(ctx context.Context) (*status.HealthStatus, error)
 
 // isCLIAvailable checks if kubectl is installed.
 func (k *Checker) isCLIAvailable() bool {
-	_, err := exec.LookPath("kubectl")
+	_, err := lookPath("kubectl")
 	return err == nil
 }
 
 // getCurrentContext gets the current Kubernetes context.
 func (k *Checker) getCurrentContext(ctx context.Context) (string, error) {
-	cmd := exec.CommandContext(ctx, "kubectl", "config", "current-context")
+	cmd := commandContext(ctx, "kubectl", "config", "current-context")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -148,9 +148,10 @@ func (k *Checker) getCurrentContext(ctx context.Context) (string, error) {
 }
 
 // getCurrentNamespace gets the current Kubernetes namespace.
+//
 //nolint:unparam // Error return reserved for API compatibility
 func (k *Checker) getCurrentNamespace(ctx context.Context) (string, error) {
-	cmd := exec.CommandContext(ctx, "kubectl", "config", "view", "--minify", "--output", "jsonpath={..namespace}")
+	cmd := commandContext(ctx, "kubectl", "config", "view", "--minify", "--output", "jsonpath={..namespace}")
 	output, err := cmd.Output()
 	if err != nil {
 		return DefaultNamespace, nil //nolint:nilerr // Safe default namespace returned on error
@@ -164,6 +165,7 @@ func (k *Checker) getCurrentNamespace(ctx context.Context) (string, error) {
 }
 
 // checkClusterAccess checks if we can access the Kubernetes cluster.
+//
 //nolint:unparam // Error return reserved for API compatibility
 func (k *Checker) checkClusterAccess(ctx context.Context) (*status.CredentialStatus, error) {
 	credStatus := &status.CredentialStatus{
@@ -172,7 +174,7 @@ func (k *Checker) checkClusterAccess(ctx context.Context) (*status.CredentialSta
 	}
 
 	// Test cluster access with a simple API call
-	cmd := exec.CommandContext(ctx, "kubectl", "auth", "can-i", "get", "pods", "--request-timeout=10s")
+	cmd := commandContext(ctx, "kubectl", "auth", "can-i", "get", "pods", "--request-timeout=10s")
 	err := cmd.Run()
 	if err != nil {
 		credStatus.Warning = "Cannot access Kubernetes cluster"
@@ -184,7 +186,7 @@ func (k *Checker) checkClusterAccess(ctx context.Context) (*status.CredentialSta
 	// Check if credentials have expiration (for OIDC/cloud providers)
 	currentUser := k.getCurrentUser(ctx)
 	jsonPath := fmt.Sprintf("{.users[?(@.name==%q)].user}", currentUser)
-	cmd = exec.CommandContext(ctx, "kubectl", "config", "view", "--raw", "-o", "jsonpath="+jsonPath) // #nosec G204 - validated kubectl command with controlled arguments
+	cmd = commandContext(ctx, "kubectl", "config", "view", "--raw", "-o", "jsonpath="+jsonPath) // #nosec G204 - validated kubectl command with controlled arguments
 	output, err := cmd.Output()
 	if err == nil && strings.Contains(string(output), "expiry") {
 		credStatus.Type = "oidc-token"
@@ -196,7 +198,7 @@ func (k *Checker) checkClusterAccess(ctx context.Context) (*status.CredentialSta
 
 // getCurrentUser gets the current Kubernetes user.
 func (k *Checker) getCurrentUser(ctx context.Context) string {
-	cmd := exec.CommandContext(ctx, "kubectl", "config", "view", "--minify", "--output", "jsonpath={.contexts[0].context.user}")
+	cmd := commandContext(ctx, "kubectl", "config", "view", "--minify", "--output", "jsonpath={.contexts[0].context.user}")
 	output, err := cmd.Output()
 	if err != nil {
 		return ""
