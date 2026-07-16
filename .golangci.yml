@@ -113,8 +113,13 @@ linters:
         const:
           COMPANY: Archmagece
           LICENSE: MIT
+        regexp:
+          # {{ YEAR }} expands to the *current* year, so every file authored in an
+          # earlier year fails and the whole repo re-breaks each January. Accept any
+          # year or range instead — the header records authorship, not the clock.
+          YEARS: '20\d\d(-20\d\d)?'
       template: |-
-        Copyright (c) {{ YEAR }} {{ COMPANY }}
+        Copyright (c) {{ YEARS }} {{ COMPANY }}
         SPDX-License-Identifier: {{ LICENSE }}
     gomodguard:
       blocked:
@@ -166,8 +171,13 @@ linters:
       for-loops: true
     revive:
       rules:
+        # Stuttering renames (environment.EnvironmentSwitcher -> Switcher) would break
+        # gzh-cli, which imports these packages, so only the missing-comment half of
+        # this rule is enforced. Revisit if the public API is ever versioned/broken.
         - name: exported
           disabled: false
+          arguments:
+            - disableStutteringCheck
         - name: package-comments
           disabled: true
         - name: var-naming
@@ -210,7 +220,10 @@ linters:
         rules:
           avro: snake
           bson: camel
-          json: snake
+          # `status --output json` already emits camelCase (pkg/status/formatter.go).
+          # Renaming the fields to snake_case would break every consumer of that
+          # output, so the rule follows the shipped contract rather than the reverse.
+          json: camel
           mapstructure: kebab
           xml: camel
           yaml: camel
