@@ -114,11 +114,11 @@ ______________________________________________________________________
   `LifecycleStable` / `Version 1.0.0` 선언은 실제 상태(v0.1.0, 빌드 실패,
   태그 없음)와 모순되므로 신뢰 근거로 쓸 수 없다
 
-**Baseline (진행 중)**
+**Baseline**
 
-- `LICENSE` 미보유 (GUIDELINES §4 격차). 전 소스에 `SPDX-License-Identifier: MIT`
-  헤더가, README에 MIT 주장이 있으나 라이선스 원문이 없다 — `go get`으로 소비되는
-  공개 라이브러리로서 실질적 결함이다
+- GUIDELINES §3 베이스라인 충족 — `Makefile`·`.golangci.yml`(v2)·CI·`LICENSE`(MIT,
+  소스의 SPDX 헤더 및 README 주장과 일치)·문서·본 PRODUCT.md 보유.
+  단 CI는 `make build` 실패로 red다 (G2)
 
 ______________________________________________________________________
 
