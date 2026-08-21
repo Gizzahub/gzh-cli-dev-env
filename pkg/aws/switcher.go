@@ -54,7 +54,7 @@ func (a *Switcher) Switch(ctx context.Context, config any) error {
 
 	// Set region on the target profile (or default when profile is empty).
 	if awsConfig.Region != "" {
-		args := []string{"configure", "set", "region", awsConfig.Region}
+		args := []string{awsCLIConfigure, "set", awsCLIRegion, awsConfig.Region}
 		if awsConfig.Profile != "" {
 			args = append(args, "--profile", awsConfig.Profile)
 		}

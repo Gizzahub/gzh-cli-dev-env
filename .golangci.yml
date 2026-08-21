@@ -72,7 +72,7 @@ linters:
       asserts: true
       comparison: true
     exhaustive:
-      default-signifies-exhaustive: false
+      default-signifies-exhaustive: true
     funlen:
       lines: 100
       statements: 50
@@ -115,7 +115,7 @@ linters:
     goheader:
       values:
         const:
-          COMPANY: Archmagece
+          COMPANY: Gizzahub
           LICENSE: MIT
         regexp:
           # {{ YEAR }} expands to the *current* year, so every file authored in an
@@ -138,6 +138,7 @@ linters:
         - G104
         - G204
         - G304
+        - G301 # CLI creates user config dirs at 0755
     govet:
       disable:
         - fieldalignment
@@ -252,6 +253,8 @@ linters:
           - gocyclo
           - gosec
           - revive
+          - forcetypeassert
+          - gocritic
         path: _test\.go
       - linters:
           - all

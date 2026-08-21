@@ -188,7 +188,7 @@ func deserializeState(entry JournalEntry) (any, error) {
 		}
 		return &v, nil
 	case "nil":
-		return nil, nil
+		return nil, nil //nolint:nilnil // serialized nil state
 	default:
 		var v any
 		if err := json.Unmarshal(entry.Data, &v); err != nil {

@@ -107,12 +107,12 @@ func ClearJournal(path string) error {
 // LoadJournal reads a journal from path. Returns (nil, nil) when the file is absent.
 func LoadJournal(path string) (*RollbackJournal, error) {
 	if path == "" {
-		return nil, nil
+		return nil, nil //nolint:nilnil // absent journal is not an error
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			return nil, nil //nolint:nilnil // missing file is an empty journal
 		}
 		return nil, fmt.Errorf("read journal: %w", err)
 	}

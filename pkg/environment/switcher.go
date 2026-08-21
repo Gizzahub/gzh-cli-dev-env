@@ -50,7 +50,7 @@ func (es *EnvironmentSwitcher) SetProgressCallback(callback func(SwitchProgress)
 }
 
 // SwitchEnvironment switches to the specified environment.
-func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Environment, options SwitchOptions) (*SwitchResult, error) {
+func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Environment, options SwitchOptions) (*SwitchResult, error) { //nolint:gocognit // journal-clear error path is one extra branch on an existing orchestration func
 	startTime := time.Now()
 
 	if err := env.Validate(); err != nil {
@@ -136,7 +136,13 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 
 	// Successful completion: remove crash-recovery journal.
 	if journalPath != "" {
-		_ = ClearJournal(journalPath)
+		if err := ClearJournal(journalPath); err != nil {
+			result.Errors = append(result.Errors, SwitchError{
+				Service: "journal",
+				Error:   err.Error(),
+				Time:    time.Now(),
+			})
+		}
 	}
 
 	result.Duration = time.Since(startTime)

@@ -21,6 +21,8 @@ const (
 	DefaultProfile = "default"
 	// CredentialsExpiredMsg is the message for expired credentials.
 	CredentialsExpiredMsg = "Credentials invalid or expired"
+	awsCLIConfigure       = "configure"
+	awsCLIRegion          = "region"
 )
 
 // Checker implements status.ServiceChecker for AWS.
@@ -143,7 +145,7 @@ func (a *Checker) getCurrentRegion() string {
 	}
 
 	// Try to get from AWS config for the active profile
-	args := []string{"configure", "get", "region"}
+	args := []string{awsCLIConfigure, "get", awsCLIRegion}
 	if profile := resolveActiveProfile(); profile != "" {
 		args = append(args, "--profile", profile)
 	}

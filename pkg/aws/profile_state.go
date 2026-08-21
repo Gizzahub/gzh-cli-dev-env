@@ -65,7 +65,7 @@ func readActiveProfile() (string, error) {
 // resolveActiveProfile returns the active profile in priority order:
 // 1. AWS_PROFILE environment variable
 // 2. state file written by Switch
-// 3. empty string
+// 3. empty string.
 func resolveActiveProfile() string {
 	if profile := os.Getenv("AWS_PROFILE"); profile != "" {
 		return profile
