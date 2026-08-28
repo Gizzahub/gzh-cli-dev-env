@@ -87,8 +87,6 @@ bootstrap: ## install build dependencies
 clean: ## clean up environment
 	@echo -e "$(CYAN)Cleaning up build artifacts...$(RESET)"
 	@rm -rf coverage.out coverage.html dist/ $(executablename) $(BINARY)
-	@rm -f $(shell go env GOPATH)/bin/$(executablename)
-	@rm -f $(shell go env GOPATH)/bin/$(BINARY)
 	@rm -f lint-report.json gosec-report.json
 	@echo -e "$(GREEN)✅ Cleanup completed$(RESET)"
 
