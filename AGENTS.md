@@ -1,4 +1,4 @@
-# CLAUDE.md
+# gzh-cli-dev-env
 
 This file provides LLM-optimized guidance for Claude Code when working with this repository.
 
@@ -27,39 +27,6 @@ Core principle: ServiceSwitcher interface for unified cloud/container/SSH enviro
 | `go test ./pkg/... -v` | Test specific package | Focused testing |
 | `make clean` | Clean artifacts | Fresh start |
 | `make info` | Show project info | Quick reference |
-
----
-
-## Directory Structure
-
-```
-.
-├── pkg/
-│   ├── environment/       # Core interfaces + switching logic
-│   │   ├── interfaces.go  # ServiceSwitcher interface
-│   │   ├── types.go       # Environment, ServiceConfig types
-│   │   ├── switcher.go    # EnvironmentSwitcher implementation
-│   │   └── dependency.go  # DependencyResolver
-│   ├── status/            # Status checking subsystem
-│   │   ├── interfaces.go  # ServiceChecker interface
-│   │   ├── collector.go   # StatusCollector
-│   │   └── formatter.go   # Output formatters
-│   ├── aws/               # AWS-specific implementations
-│   ├── gcp/               # GCP-specific implementations
-│   ├── azure/             # Azure-specific implementations
-│   ├── docker/            # Docker-specific implementations
-│   ├── kubernetes/        # Kubernetes-specific implementations
-│   ├── ssh/               # SSH-specific implementations
-│   ├── config/            # Configuration save/load
-│   └── tui/               # Terminal UI dashboard
-├── internal/
-│   ├── exec/              # Command execution utilities
-│   └── testutil/          # Test helpers and mocks
-├── cmd/devenv/        # Optional standalone CLI
-├── go.mod
-├── Makefile
-└── CLAUDE.md
-```
 
 ---
 
@@ -131,9 +98,6 @@ func newDevEnvCmd() *cobra.Command {
 
 ```
 {type}({scope}): {description}
-
-Model: claude-{model}
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **Types**: feat, fix, docs, refactor, test, chore
