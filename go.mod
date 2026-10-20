@@ -2,7 +2,7 @@ module github.com/gizzahub/gzh-cli-dev-env
 
 go 1.26
 
-toolchain go1.26.7
+toolchain go1.27.3
 
 require (
 	github.com/charmbracelet/bubbles v1.0.0

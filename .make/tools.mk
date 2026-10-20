@@ -5,7 +5,7 @@
 # Tool Configuration
 # ==============================================================================
 
-GOLANGCI_LINT_VERSION := v2.12.2
+GOLANGCI_LINT_VERSION := v2.15.0
 GOLANGCI_LINT_RELEASE_VERSION := $(patsubst v%,%,$(GOLANGCI_LINT_VERSION))
 GOLANGCI_LINT_DIR := $(CURDIR)/bin/tools
 GOLANGCI_LINT := $(GOLANGCI_LINT_DIR)/golangci-lint$(shell go env GOEXE)
