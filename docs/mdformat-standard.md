@@ -27,6 +27,9 @@ ignore하지 않은 일반 Markdown 파일을 선택한다. symlink·디렉터�
   기존부터 canonical 출력과 달라 동일한 출력으로 정렬했다.
 - YAML frontmatter 보존, 표 처리, 재실행 멱등성과 미정렬 입력 거부: PASS.
 - 버전 순서 허용, postrelease·누락·추가 플러그인 및 의존성 불일치 거부: PASS.
+- 독립 strong 리뷰에서 발견한 버전 명령 실패 누락을 수정했다.
+  정상 버전 문구를 출력하고 exit 42로 끝나는 명령도 거부한다
+  (`tmp/issue352/version-exit-regression.json`).
 - 공백·개행 경로, symlink·디렉터리·ignored venv 제외,
   변경 파일 선택, Git 및 formatter 실패 전파: PASS.
 
