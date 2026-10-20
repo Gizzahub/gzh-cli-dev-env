@@ -10,14 +10,27 @@ GOLANGCI_LINT_RELEASE_VERSION := $(patsubst v%,%,$(GOLANGCI_LINT_VERSION))
 GOLANGCI_LINT_DIR := $(CURDIR)/bin/tools
 GOLANGCI_LINT := $(GOLANGCI_LINT_DIR)/golangci-lint$(shell go env GOEXE)
 
+# ISSUE-352: 패밀리 고정 묶음. gfm이 표를 처리하므로 tables 플러그인은 쓰지 않는다.
+MDFORMAT_VERSION := 1.0.0
+MDFORMAT_GFM_VERSION := 1.0.0
+MDFORMAT_FRONTMATTER_VERSION := 2.1.2
+MDFORMAT := $(CURDIR)/bin/tools/mdformat$(shell go env GOEXE)
+MDFORMAT_TOOL_DIR := $(CURDIR)/bin/tools/python
+MDFORMAT_PYTHON := $(MDFORMAT_TOOL_DIR)/mdformat/$(if $(shell go env GOEXE),Scripts/python.exe,bin/python)
+MDFORMAT_CONSTRAINTS := $(CURDIR)/.make/mdformat-constraints.txt
+MDFORMAT_VERSION_OK = "$(MDFORMAT)" --version 2>/dev/null | \
+	awk -v core="mdformat $(MDFORMAT_VERSION)" -v a="mdformat-gfm $(MDFORMAT_GFM_VERSION)" -v b="mdformat_frontmatter $(MDFORMAT_FRONTMATTER_VERSION)" \
+	'NR == 1 && sub(/\)$$/, "") { n = split($$0, p, / \(|, /); ok = n == 3 && p[1] == core && ((p[2] == a && p[3] == b) || (p[2] == b && p[3] == a)) } END { exit !ok }'
+MDFORMAT_DEPS_OK = "$(MDFORMAT_PYTHON)" -I -c 'import sys, importlib.metadata as m; lines = [l for l in map(str.strip, open(sys.argv[1])) if l and l[0] != chr(35)]; got = lambda n: next((d.version for d in m.distributions(name=n)), None); pairs = [(l, l.split("==")) for l in lines]; bad = [l + (" (installed %s)" % got(p[0]) if len(p) == 2 else " (not name==version)") for l, p in pairs if len(p) != 2 or got(p[0]) != p[1]]; bad and print("mdformat dependency mismatch: " + "; ".join(bad), file=sys.stderr); sys.exit(not lines or bool(bad))' "$(MDFORMAT_CONSTRAINTS)"
+
 # ==============================================================================
 # Core Tool Installation
 # ==============================================================================
 
-.PHONY: install-tools install-format-tools install-analysis-tools install-goreleaser
+.PHONY: install-tools install-format-tools install-mdformat install-analysis-tools install-goreleaser
 .PHONY: install-golangci-lint install-pre-commit-tools install-docs-tools
 
-install-tools: install-format-tools install-analysis-tools install-golangci-lint install-goreleaser ## install all development tools
+install-tools: install-format-tools install-mdformat install-analysis-tools install-golangci-lint install-goreleaser ## install all development tools
 	@echo -e "$(GREEN)✅ All development tools installed!$(RESET)"
 
 install-format-tools: ## install advanced formatting tools
@@ -25,6 +38,19 @@ install-format-tools: ## install advanced formatting tools
 	@which gofumpt > /dev/null || (echo "Installing gofumpt..." && go install mvdan.cc/gofumpt@latest)
 	@which gci > /dev/null || (echo "Installing gci..." && go install github.com/daixiang0/gci@latest)
 	@echo -e "$(GREEN)✅ All formatting tools installed!$(RESET)"
+
+install-mdformat: ## install the pinned Markdown bundle into bin/tools
+	@mkdir -p "$(dir $(MDFORMAT))"
+	@if ! { $(MDFORMAT_VERSION_OK) && $(MDFORMAT_DEPS_OK) 2>/dev/null; }; then \
+		command -v uv >/dev/null 2>&1 || { echo "uv is required to install mdformat" >&2; exit 1; }; \
+		UV_TOOL_DIR="$(MDFORMAT_TOOL_DIR)" UV_TOOL_BIN_DIR="$(dir $(MDFORMAT))" \
+			uv tool install --quiet --force --constraints "$(MDFORMAT_CONSTRAINTS)" \
+				--with "mdformat-gfm==$(MDFORMAT_GFM_VERSION)" \
+				--with "mdformat-frontmatter==$(MDFORMAT_FRONTMATTER_VERSION)" \
+				"mdformat==$(MDFORMAT_VERSION)" || exit 1; \
+	fi
+	@$(MDFORMAT_VERSION_OK) || { echo "mdformat version/plugin set mismatch: $(MDFORMAT)" >&2; exit 1; }
+	@$(MDFORMAT_DEPS_OK) || { echo "mdformat dependencies do not match $(MDFORMAT_CONSTRAINTS)" >&2; exit 1; }
 
 install-analysis-tools: ## install code analysis tools
 	@echo -e "$(CYAN)Installing code analysis tools...$(RESET)"

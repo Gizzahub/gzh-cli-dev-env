@@ -1,0 +1,8 @@
+# 패밀리 기준: gzh-cli-gitforge .make/mdformat-constraints.txt (ISSUE-352).
+# mdformat 1.0.0 + gfm 1.0.0 + frontmatter 2.1.2, Python 3.11+.
+# 최상위 pin 변경 시 재해석한다. Python 3.10의 tomli는 별도 조건부 의존성이다.
+markdown-it-py==4.2.0
+mdit-py-plugins==0.6.1
+mdurl==0.1.2
+ruamel-yaml==0.19.1
+wcwidth==0.9.2

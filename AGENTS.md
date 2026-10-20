@@ -2,7 +2,7 @@
 
 This file provides LLM-optimized guidance for Claude Code when working with this repository.
 
----
+______________________________________________________________________
 
 ## Quick Start (30s scan)
 
@@ -13,22 +13,22 @@ This file provides LLM-optimized guidance for Claude Code when working with this
 
 Core principle: ServiceSwitcher interface for unified cloud/container/SSH environment switching.
 
----
+______________________________________________________________________
 
 ## Top 10 Commands
 
-| Command | Purpose | When to Use |
-|---------|---------|-------------|
-| `make build` | Build library | After changes |
-| `make test` | Run all tests | Pre-commit validation |
-| `make fmt && make lint` | Format + lint | Before every commit |
-| `make dev` | Quick dev cycle | Rapid iteration |
-| `make cover` | Coverage report | Check coverage |
-| `go test ./pkg/... -v` | Test specific package | Focused testing |
-| `make clean` | Clean artifacts | Fresh start |
-| `make info` | Show project info | Quick reference |
+| Command                 | Purpose               | When to Use           |
+| ----------------------- | --------------------- | --------------------- |
+| `make build`            | Build library         | After changes         |
+| `make test`             | Run all tests         | Pre-commit validation |
+| `make fmt && make lint` | Format + lint         | Before every commit   |
+| `make dev`              | Quick dev cycle       | Rapid iteration       |
+| `make cover`            | Coverage report       | Check coverage        |
+| `go test ./pkg/... -v`  | Test specific package | Focused testing       |
+| `make clean`            | Clean artifacts       | Fresh start           |
+| `make info`             | Show project info     | Quick reference       |
 
----
+______________________________________________________________________
 
 ## Core Interfaces
 
@@ -55,11 +55,12 @@ type ServiceChecker interface {
 }
 ```
 
----
+______________________________________________________________________
 
 ## Absolute Rules (DO/DON'T)
 
 ### DO
+
 - ✅ Use interfaces for all service implementations
 - ✅ Run `make fmt && make lint` before every commit
 - ✅ Maintain 80%+ test coverage for core logic
@@ -67,12 +68,13 @@ type ServiceChecker interface {
 - ✅ Use context.Context for all operations
 
 ### DON'T
+
 - ❌ Add external dependencies to pkg/ without review
 - ❌ Put CLI-specific code in pkg/ (that goes in cmd/)
 - ❌ Skip error handling for cloud API calls
 - ❌ Store credentials in code or config
 
----
+______________________________________________________________________
 
 ## Integration with gzh-cli
 
@@ -92,7 +94,7 @@ func newDevEnvCmd() *cobra.Command {
 }
 ```
 
----
+______________________________________________________________________
 
 ## Git Commit Format
 
@@ -103,16 +105,16 @@ func newDevEnvCmd() *cobra.Command {
 **Types**: feat, fix, docs, refactor, test, chore
 **Scope**: environment, status, aws, gcp, azure, docker, k8s, ssh, config, tui
 
----
+______________________________________________________________________
 
 ## Context Documentation
 
-| Guide | Purpose |
-|-------|---------|
+| Guide                                                            | Purpose                         |
+| ---------------------------------------------------------------- | ------------------------------- |
 | [Architecture Guide](docs/.claude-context/architecture-guide.md) | Integration pattern, extensions |
-| [Testing Guide](docs/.claude-context/testing-guide.md) | Test organization, mocking |
+| [Testing Guide](docs/.claude-context/testing-guide.md)           | Test organization, mocking      |
 
----
+______________________________________________________________________
 
 **Last Updated**: 2025-12-26
 **Status**: Initial scaffolding

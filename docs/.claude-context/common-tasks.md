@@ -25,28 +25,28 @@ pkg/<service>/
 
 ## Supported Services
 
-| Package | Service | Status |
-|---------|---------|--------|
-| `pkg/docker` | Docker daemon | Start/Stop/Restart/Status |
-| `pkg/azure` | Azure CLI / resources | Login/Logout/Status |
-| `pkg/config` | Dev env config | Load/Save profiles |
+| Package      | Service               | Status                    |
+| ------------ | --------------------- | ------------------------- |
+| `pkg/docker` | Docker daemon         | Start/Stop/Restart/Status |
+| `pkg/azure`  | Azure CLI / resources | Login/Logout/Status       |
+| `pkg/config` | Dev env config        | Load/Save profiles        |
 
 ## CLI Commands
 
-| Command | Purpose |
-|---------|---------|
-| `devenv status` | Show all service statuses |
-| `devenv switch docker start` | Start Docker |
-| `devenv switch docker stop` | Stop Docker |
-| `devenv switch azure login` | Azure CLI login |
-| `devenv switch all status` | All services status |
+| Command                      | Purpose                   |
+| ---------------------------- | ------------------------- |
+| `devenv status`              | Show all service statuses |
+| `devenv switch docker start` | Start Docker              |
+| `devenv switch docker stop`  | Stop Docker               |
+| `devenv switch azure login`  | Azure CLI login           |
+| `devenv switch all status`   | All services status       |
 
 ## Adding a New Service Switcher
 
 1. Create `pkg/<service>/switcher.go` implementing `Switcher`
-2. Create `pkg/<service>/checker.go` for health checks
-3. Add command in `cmd/devenv/service_switchers.go`
-4. Register in the root command
+1. Create `pkg/<service>/checker.go` for health checks
+1. Add command in `cmd/devenv/service_switchers.go`
+1. Register in the root command
 
 ## TUI Mode
 

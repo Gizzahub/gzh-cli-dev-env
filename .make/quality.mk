@@ -12,37 +12,35 @@
 # Code Formatting Targets
 # ==============================================================================
 
+# Git 조회·필터·formatter 실패를 전파하고 공백/개행 경로를 NUL로 보존한다.
+# ignored venv와 symlink는 저장소 소유 Markdown 입력에서 제외한다.
+MDFORMAT_RUN = bash -o pipefail -c 'mode=$$1; shift; { if [ "$$mode" = changed ]; then git diff --name-only -z --diff-filter=d HEAD -- "*.md"; else git ls-files -z --cached --others --exclude-standard -- "*.md"; fi; } | while IFS= read -r -d "" f; do if [ -f "$$f" ] && [ ! -L "$$f" ]; then printf "%s\0" "$$f"; fi; done | xargs -0 -r "$$@"' _
+
 format: format-simplify ## quick and simple formatting (default)
 fmt: format-simplify
 
-format-simplify: ## quick basic formatting with gofumpt, goimports, and mdformat
+format-simplify: install-mdformat ## quick basic formatting with gofumpt, goimports, and mdformat
 	@echo -e "$(CYAN)🚀 Quick formatting...$(RESET)"
 	@echo "1. Running gofumpt (includes go fmt + simplification)..."
 	@gofumpt -w .
 	@echo "2. Organizing imports..."
 	@goimports -w -local github.com/gizzahub/gzh-cli .
 	@echo "3. Formatting markdown files..."
-	@find . -name "*.md" -type f -not -path "./vendor/*" -not -path "./.git/*" | xargs -r mdformat || true
+	@$(MDFORMAT_RUN) all "$(MDFORMAT)"
 	@echo -e "$(GREEN)✅ Quick formatting complete!$(RESET)"
 
-format-md: ## format all markdown files with mdformat
+format-md: install-mdformat ## format all markdown files with mdformat
 	@echo -e "$(CYAN)📝 Formatting markdown files...$(RESET)"
-	@find . -name "*.md" -type f -not -path "./vendor/*" -not -path "./.git/*" | xargs -r mdformat
+	@$(MDFORMAT_RUN) all "$(MDFORMAT)"
 	@echo -e "$(GREEN)✅ Markdown formatting complete!$(RESET)"
 
-format-md-check: ## check markdown files that need formatting
+format-md-check: install-mdformat ## check markdown files that need formatting
 	@echo -e "$(CYAN)📋 Checking markdown formatting...$(RESET)"
-	@find . -name "*.md" -type f -not -path "./vendor/*" -not -path "./.git/*" | xargs -r mdformat --check || echo -e "$(YELLOW)Some markdown files need formatting$(RESET)"
+	@$(MDFORMAT_RUN) all "$(MDFORMAT)" --check
 
-format-md-diff: ## format only changed markdown files
+format-md-diff: install-mdformat ## format only changed markdown files
 	@echo -e "$(CYAN)🚀 Formatting changed markdown files...$(RESET)"
-	@CHANGED_FILES=$$(git diff --name-only --diff-filter=d HEAD | grep '\.md$$' || true); \
-	if [ -n "$$CHANGED_FILES" ]; then \
-		echo "$$CHANGED_FILES" | xargs -r mdformat; \
-		echo -e "$(GREEN)✅ Changed markdown files formatted!$(RESET)"; \
-	else \
-		echo -e "$(YELLOW)No markdown files changed$(RESET)"; \
-	fi
+	@$(MDFORMAT_RUN) changed "$(MDFORMAT)"
 
 format-strict: format-install-tools ## comprehensive formatting with all tools
 	@echo -e "$(CYAN)🔧 Strict formatting (all tools)...$(RESET)"
@@ -77,12 +75,11 @@ format-diff: ## show formatting differences
 		echo -e "$(GREEN)✅ No formatting differences found!$(RESET)"; \
 	fi
 
-format-install-tools: ## install advanced formatting tools
+format-install-tools: install-mdformat ## install advanced formatting tools
 	@echo -e "$(CYAN)Installing formatting tools...$(RESET)"
 	@which goimports > /dev/null || (echo "Installing goimports..." && go install golang.org/x/tools/cmd/goimports@latest)
 	@which gofumpt > /dev/null || (echo "Installing gofumpt..." && go install mvdan.cc/gofumpt@latest)
 	@which gci > /dev/null || (echo "Installing gci..." && go install github.com/daixiang0/gci@latest)
-	@which mdformat > /dev/null || (echo "Installing mdformat..." && pip install --user mdformat mdformat-gfm mdformat-tables)
 	@echo -e "$(GREEN)✅ All formatting tools installed!$(RESET)"
 
 format-file: ## format specific files with gofumpt and goimports (usage: make format-file file1.go file2.go ...)
