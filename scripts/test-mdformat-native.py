@@ -58,7 +58,7 @@ try:
             signal.signal(number, interrupted)
     require(sys.version_info >= (3, 11), sys.version)
     require(Path(sys.executable).samefile(python), ('driver must use prepared tool Python', sys.executable))
-    for line in (repo / '.make/mdformat-constraints.txt').read_text().splitlines():
+    for line in (repo / '.make/mdformat-constraints.txt').read_text(encoding='utf-8').splitlines():
         if line.strip() and not line.lstrip().startswith('#'):
             name, version = line.strip().split('==')
             require(metadata.version(name) == version, (name, metadata.version(name), version))
