@@ -12,9 +12,9 @@
 # Code Formatting Targets
 # ==============================================================================
 
-# Git 조회·필터·formatter 실패를 전파하고 공백/개행 경로를 NUL로 보존한다.
-# ignored venv와 symlink는 저장소 소유 Markdown 입력에서 제외한다.
-MDFORMAT_RUN = bash -o pipefail -c 'mode=$$1; shift; { if [ "$$mode" = changed ]; then git diff --name-only -z --diff-filter=d HEAD -- "*.md"; else git ls-files -z --cached --others --exclude-standard -- "*.md"; fi; } | while IFS= read -r -d "" f; do if [ -f "$$f" ] && [ ! -L "$$f" ]; then printf "%s\0" "$$f"; fi; done | xargs -0 -r "$$@"' _
+# 명시한 source merge-base와 index/worktree를 기준으로 저장소 소유 파일을 선택한다.
+MDFORMAT_BASE ?= origin/master
+MDFORMAT_RUN = "$(MDFORMAT_PYTHON)" -I scripts/mdformat-files.py
 
 format: format-simplify ## quick and simple formatting (default)
 fmt: format-simplify
@@ -26,21 +26,21 @@ format-simplify: install-mdformat ## quick basic formatting with gofumpt, goimpo
 	@echo "2. Organizing imports..."
 	@goimports -w -local github.com/gizzahub/gzh-cli .
 	@echo "3. Formatting markdown files..."
-	@$(MDFORMAT_RUN) all "$(MDFORMAT)"
+	@$(MDFORMAT_RUN) changed --base "$(MDFORMAT_BASE)" --formatter "$(MDFORMAT)"
 	@echo -e "$(GREEN)✅ Quick formatting complete!$(RESET)"
 
 format-md: install-mdformat ## format all markdown files with mdformat
 	@echo -e "$(CYAN)📝 Formatting markdown files...$(RESET)"
-	@$(MDFORMAT_RUN) all "$(MDFORMAT)"
+	@$(MDFORMAT_RUN) all --formatter "$(MDFORMAT)"
 	@echo -e "$(GREEN)✅ Markdown formatting complete!$(RESET)"
 
 format-md-check: install-mdformat ## check markdown files that need formatting
 	@echo -e "$(CYAN)📋 Checking markdown formatting...$(RESET)"
-	@$(MDFORMAT_RUN) all "$(MDFORMAT)" --check
+	@$(MDFORMAT_RUN) changed --base "$(MDFORMAT_BASE)" --formatter "$(MDFORMAT)" --check
 
 format-md-diff: install-mdformat ## format only changed markdown files
 	@echo -e "$(CYAN)🚀 Formatting changed markdown files...$(RESET)"
-	@$(MDFORMAT_RUN) changed "$(MDFORMAT)"
+	@$(MDFORMAT_RUN) changed --base "$(MDFORMAT_BASE)" --formatter "$(MDFORMAT)"
 
 format-strict: format-install-tools ## comprehensive formatting with all tools
 	@echo -e "$(CYAN)🔧 Strict formatting (all tools)...$(RESET)"
@@ -308,7 +308,7 @@ pre-commit-update: ## update pre-commit hooks to latest versions
 
 .PHONY: quality quality-fix lint-all
 
-quality: fmt security ## run comprehensive quality checks (without lint-check for now)
+quality: fmt security format-md-check mdformat-install-test markdown-selector-test ## run comprehensive quality checks (without lint-check for now)
 	@echo -e "$(GREEN)✅ All quality checks passed!$(RESET)"
 
 quality-strict: fmt lint-check security ## run strict quality checks with linting
@@ -438,3 +438,13 @@ lint-help: ## show comprehensive help for linting targets
 	@echo "  .golangci.yml             golangci-lint configuration"
 	@echo "  .pre-commit-config.yaml   Pre-commit hooks configuration"
 	@echo "  .gosec.yaml              gosec security scanner configuration"
+
+.PHONY: format-md-all-check mdformat-install-test markdown-selector-test
+format-md-all-check: install-mdformat ## 전체 Markdown을 변경 없이 검사
+	@$(MDFORMAT_RUN) all --formatter "$(MDFORMAT)" --check
+
+mdformat-install-test: install-mdformat ## 준비된 Python으로 설치 계약 회귀 검사
+	@/bin/bash scripts/test-mdformat-install.sh "$(MDFORMAT_PYTHON)"
+
+markdown-selector-test: install-mdformat ## 격리된 Git fixture로 선택 계약 검사
+	@"$(MDFORMAT_PYTHON)" -I scripts/test-mdformat-files.py

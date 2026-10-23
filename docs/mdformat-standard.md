@@ -9,12 +9,19 @@ mdformat-gfm 1.0.0, mdformat-frontmatter 2.1.2를 사용한다.
 `.make/mdformat-constraints.txt`의 하위 의존성을 검증한다.
 전역 mdformat 설치는 변경하지 않는다.
 
-`format-md`, `format-md-check`, `fmt`의 Markdown 단계는 Git이 추적하거나
-ignore하지 않은 일반 Markdown 파일을 선택한다. symlink·디렉터리와 ignored
-도구 venv는 제외하며, 공백·개행 경로를 NUL 구분으로 전달한다.
-`format-md-diff`는 HEAD 대비 추적 파일의 변경만 선택하므로 untracked 파일은
-포함하지 않는다. Git 조회와 formatter의 실패는 target 실패로 전파한다.
-이 선택기는 Bash와 NUL 입력을 지원하는 xargs를 사용한다.
+`format-md`는 전체 일반 파일을 명시적으로 정렬한다. `format-md-check`와
+`format-md-diff`, `fmt`의 Markdown 단계는 `MDFORMAT_BASE`(기본 origin/master)의
+merge-base 이후 커밋, index, 작업트리 및 비추적 파일을 선택한다.
+symlink(Windows의 index mode 120000 포함), 디렉터리, ignored 도구 venv는 제외한다.
+공백·개행·선행 대시 경로는 인자로 보존하고 Git 조회·formatter 실패를 전파한다.
+check는 index/worktree 불일치를 거부하며 파일이나 index를 수정하지 않는다.
+`format-md-all-check`는 전체 검사를 명시적으로 실행한다.
+
+도구 Python은 3.11 이상이어야 하며 건강한 최신 설치는 재사용한다.
+새 설치에서만 unset `UV_PYTHON`에 `>=3.11`을 적용하고 명시값은 보존한다.
+새 Markdown workflow는 Linux·Windows에서 변경 검사와 실제 설치·launcher·선택기
+smoke를 실행한다. 10분 제한은 초기 정책값이며 상세 메트릭 설계는 후속 범위다.
+실제 플랫폼별 실행 결과는 패밀리 보드의 ISSUE-352 campaign 증거에서 구분한다.
 
 ## 검증 — 2026-10-21
 
