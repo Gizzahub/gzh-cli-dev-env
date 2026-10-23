@@ -107,14 +107,5 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## Context Documentation
-
-| Guide                                                            | Purpose                         |
-| ---------------------------------------------------------------- | ------------------------------- |
-| [Architecture Guide](docs/.claude-context/architecture-guide.md) | Integration pattern, extensions |
-| [Testing Guide](docs/.claude-context/testing-guide.md)           | Test organization, mocking      |
-
-______________________________________________________________________
-
 **Last Updated**: 2025-12-26
 **Status**: Initial scaffolding
