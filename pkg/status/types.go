@@ -13,13 +13,13 @@ type StatusType string
 
 const (
 	// StatusActive represents an active service.
-	StatusActive   StatusType = "active"
+	StatusActive StatusType = "active"
 	// StatusInactive represents an inactive service.
 	StatusInactive StatusType = "inactive"
 	// StatusError represents a service in error state.
-	StatusError    StatusType = "error"
+	StatusError StatusType = "error"
 	// StatusUnknown represents an unknown service state.
-	StatusUnknown  StatusType = "unknown"
+	StatusUnknown StatusType = "unknown"
 )
 
 // ServiceStatus represents the current status of a development environment service.

@@ -309,9 +309,11 @@ func (m *recoverMockSwitcher) Name() string { return m.name }
 func (m *recoverMockSwitcher) Switch(ctx context.Context, config any) error {
 	return nil
 }
+
 func (m *recoverMockSwitcher) GetCurrentState(ctx context.Context) (any, error) {
 	return &AWSConfig{}, nil
 }
+
 func (m *recoverMockSwitcher) Rollback(ctx context.Context, previousState any) error {
 	if m.onRollback != nil {
 		return m.onRollback(previousState)

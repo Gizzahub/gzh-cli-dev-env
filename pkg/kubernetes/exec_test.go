@@ -115,7 +115,7 @@ func TestSwitcher_Switch_NamespaceFailure(t *testing.T) {
 
 func TestSwitcher_GetCurrentState_ParsesOutput(t *testing.T) {
 	withCommandMap(t, map[string]cmdResponse{
-		"current-context": {stdout: "dev-ctx\n"},
+		"current-context":        {stdout: "dev-ctx\n"},
 		"jsonpath={..namespace}": {stdout: "staging\n"},
 	})
 	state, err := NewSwitcher().GetCurrentState(context.Background())

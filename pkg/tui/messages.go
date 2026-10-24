@@ -108,14 +108,14 @@ const (
 )
 
 const (
-	dashboardViewName            = "Dashboard"
-	serviceDetailViewName        = "Service Detail"
-	environmentSwitchViewName    = "Environment Switch"
-	settingsViewName             = "Settings"
-	logsViewName                 = "Logs"
-	helpViewName                 = "Help"
-	searchViewName               = "Search"
-	unknownViewName              = "Unknown"
+	dashboardViewName         = "Dashboard"
+	serviceDetailViewName     = "Service Detail"
+	environmentSwitchViewName = "Environment Switch"
+	settingsViewName          = "Settings"
+	logsViewName              = "Logs"
+	helpViewName              = "Help"
+	searchViewName            = "Search"
+	unknownViewName           = "Unknown"
 )
 
 // String returns the string representation of a ViewType.

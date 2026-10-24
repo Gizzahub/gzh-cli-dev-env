@@ -143,6 +143,7 @@ func (d *Checker) isDaemonRunning(ctx context.Context) bool {
 }
 
 // getCurrentContext gets the current Docker context.
+//
 //nolint:unparam // Error return reserved for API compatibility
 func (d *Checker) getCurrentContext(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "docker", "context", "show")

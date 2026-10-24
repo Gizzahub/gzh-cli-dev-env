@@ -104,7 +104,6 @@ func TestSwitcher_Switch_PersistsProfileState_andNeverUsesConfigureSetProfile(t 
 		Profile: wantProfile,
 		Region:  wantRegion,
 	})
-
 	// Then
 	if err != nil {
 		t.Fatalf("Switch() error = %v", err)
