@@ -28,10 +28,10 @@ MDFORMAT_DEPS_OK = "$(MDFORMAT_PYTHON)" -I -c 'import sys, importlib.metadata as
 # Core Tool Installation
 # ==============================================================================
 
-.PHONY: install-tools install-format-tools install-mdformat install-analysis-tools install-goreleaser
+.PHONY: install-tools install-format-tools install-mdformat install-analysis-tools
 .PHONY: install-golangci-lint install-pre-commit-tools install-docs-tools
 
-install-tools: install-format-tools install-mdformat install-analysis-tools install-golangci-lint install-goreleaser ## install all development tools
+install-tools: install-format-tools install-mdformat install-analysis-tools install-golangci-lint ## install all development tools
 	@echo -e "$(GREEN)✅ All development tools installed!$(RESET)"
 
 install-format-tools: ## install advanced formatting tools
@@ -72,11 +72,6 @@ install-golangci-lint: ## install the pinned golangci-lint v2 release
 		GOBIN="$(GOLANGCI_LINT_DIR)" go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
 	fi
 	@"$(GOLANGCI_LINT)" --version
-
-install-goreleaser: ## install goreleaser
-	@echo -e "$(CYAN)Installing goreleaser...$(RESET)"
-	@go install github.com/goreleaser/goreleaser/v2@v2.19.0
-	@echo -e "$(GREEN)✅ goreleaser installed$(RESET)"
 
 # ==============================================================================
 # Mock and Generation Tools
@@ -192,9 +187,6 @@ tools-status: ## show installed tool status
 	@printf "  %-20s " "go:"; go version 2>/dev/null | cut -d' ' -f3 || echo -e "$(RED)Not found$(RESET)"
 	@printf "  %-20s " "git:"; git --version 2>/dev/null | cut -d' ' -f3 || echo -e "$(RED)Not found$(RESET)"
 	@echo ""
-	@echo -e "$(GREEN)🔧 Build Tools:$(RESET)"
-	@printf "  %-20s " "goreleaser:"; goreleaser --version 2>/dev/null | head -1 | awk '{print $3}' || echo -e "$(RED)Not installed$(RESET)"
-	@echo ""
 	@echo -e "$(GREEN)✨ Format Tools:$(RESET)"
 	@printf "  %-20s " "gofumpt:"; gofumpt --version 2>/dev/null || echo -e "$(RED)Not installed$(RESET)"
 	@printf "  %-20s " "gci:"; gci --version 2>/dev/null || echo -e "$(RED)Not installed$(RESET)"
@@ -222,7 +214,6 @@ tools-info: ## show comprehensive tool information
 	@echo -e "  • $(CYAN)Format Tools$(RESET)        Code formatting (gofumpt, gci)"
 	@echo -e "  • $(CYAN)Analysis Tools$(RESET)      Static analysis (staticcheck, gosec)"
 	@echo -e "  • $(CYAN)Lint Tools$(RESET)          Code linting (golangci-lint)"
-	@echo -e "  • $(CYAN)Build Tools$(RESET)         Build and release (goreleaser)"
 	@echo -e "  • $(CYAN)Mock Tools$(RESET)          Mock generation (mockgen)"
 	@echo -e "  • $(CYAN)Security Tools$(RESET)      Security scanning (gosec, govulncheck)"
 	@echo -e "  • $(CYAN)Git Hooks$(RESET)           Pre-commit hooks and validation"

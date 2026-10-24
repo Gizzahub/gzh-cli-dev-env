@@ -37,7 +37,7 @@ endif
 # Build Targets
 # ==============================================================================
 
-.PHONY: build install run bootstrap clean release-dry-run release-snapshot release-check deploy
+.PHONY: build install run bootstrap clean
 
 # This repo ships a library, not a binary: there is no main package and
 # cmd/devenv is mounted by gzh-cli via NewRootCmd(). See PRODUCT.md Non-Goals.
@@ -91,27 +91,6 @@ clean: ## clean up environment
 	@echo -e "$(GREEN)✅ Cleanup completed$(RESET)"
 
 # ==============================================================================
-# Release Targets
-# ==============================================================================
-
-release-dry-run: ## run goreleaser in dry-run mode
-	@echo -e "$(CYAN)Running goreleaser in dry-run mode...$(RESET)"
-	@command -v goreleaser >/dev/null 2>&1 || { echo -e "$(RED)goreleaser not found. Install with: make install-goreleaser$(RESET)"; exit 1; }
-	@goreleaser release --snapshot --clean --skip=publish
-
-release-snapshot: ## create a snapshot release
-	@echo -e "$(CYAN)Creating snapshot release...$(RESET)"
-	@command -v goreleaser >/dev/null 2>&1 || { echo -e "$(RED)goreleaser not found. Install with: make install-goreleaser$(RESET)"; exit 1; }
-	@goreleaser release --snapshot --clean
-
-release-check: ## check goreleaser configuration
-	@echo -e "$(CYAN)Checking goreleaser configuration...$(RESET)"
-	@command -v goreleaser >/dev/null 2>&1 || { echo -e "$(RED)goreleaser not found. Install with: make install-goreleaser$(RESET)"; exit 1; }
-	@goreleaser check
-
-deploy: release-dry-run ## alias for release-dry-run
-
-# ==============================================================================
 # Build Information
 # ==============================================================================
 
@@ -141,6 +120,3 @@ build-info: ## show build information and current configuration
 	@echo -e "  • $(CYAN)run$(RESET)                 Run the application"
 	@echo -e "  • $(CYAN)bootstrap$(RESET)           Install build dependencies"
 	@echo -e "  • $(CYAN)clean$(RESET)               Clean up build artifacts"
-	@echo -e "  • $(CYAN)release-dry-run$(RESET)     Test goreleaser configuration"
-	@echo -e "  • $(CYAN)release-snapshot$(RESET)    Create snapshot release"
-	@echo -e "  • $(CYAN)release-check$(RESET)       Check goreleaser configuration"
