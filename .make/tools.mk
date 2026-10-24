@@ -10,6 +10,33 @@ GOLANGCI_LINT_RELEASE_VERSION := $(patsubst v%,%,$(GOLANGCI_LINT_VERSION))
 GOLANGCI_LINT_DIR := $(CURDIR)/bin/tools
 GOLANGCI_LINT := $(GOLANGCI_LINT_DIR)/golangci-lint$(shell go env GOEXE)
 
+# Format toolchain pins, matching gzh-cli (.make/tools.mk) and the formatter
+# versions golangci-lint $(GOLANGCI_LINT_VERSION) embeds. The installers used to
+# guard with `which <tool>`, so `make fmt` ran whatever version each machine had
+# and rewrote files back and forth between them. `go version -m` checks the
+# module version and the Go toolchain the binary was built with.
+FORMAT_TOOLS_DIR := $(CURDIR)/bin/tools
+
+GOFUMPT_VERSION := v0.12.0
+GOFUMPT_MODULE := mvdan.cc/gofumpt
+GOFUMPT := $(FORMAT_TOOLS_DIR)/gofumpt$(shell go env GOEXE)
+
+GCI_VERSION := v0.13.7
+GCI_MODULE := github.com/daixiang0/gci
+GCI := $(FORMAT_TOOLS_DIR)/gci$(shell go env GOEXE)
+
+# goimports ships from x/tools; this is the x/tools module version.
+GOIMPORTS_VERSION := v0.52.0
+GOIMPORTS_MODULE := golang.org/x/tools
+GOIMPORTS := $(FORMAT_TOOLS_DIR)/goimports$(shell go env GOEXE)
+
+GOFUMPT_VERSION_OK = go version -m "$(GOFUMPT)" 2>/dev/null | \
+	awk -v want="$$(go env GOVERSION)" 'NR == 1 { built = $$NF } $$1 == "mod" && $$2 == "$(GOFUMPT_MODULE)" && $$3 == "$(GOFUMPT_VERSION)" { found = 1 } END { exit !(found && built == want) }'
+GCI_VERSION_OK = go version -m "$(GCI)" 2>/dev/null | \
+	awk -v want="$$(go env GOVERSION)" 'NR == 1 { built = $$NF } $$1 == "mod" && $$2 == "$(GCI_MODULE)" && $$3 == "$(GCI_VERSION)" { found = 1 } END { exit !(found && built == want) }'
+GOIMPORTS_VERSION_OK = go version -m "$(GOIMPORTS)" 2>/dev/null | \
+	awk -v want="$$(go env GOVERSION)" 'NR == 1 { built = $$NF } $$1 == "mod" && $$2 == "$(GOIMPORTS_MODULE)" && $$3 == "$(GOIMPORTS_VERSION)" { found = 1 } END { exit !(found && built == want) }'
+
 # ISSUE-352: 패밀리 고정 묶음. gfm이 표를 처리하므로 tables 플러그인은 쓰지 않는다.
 MDFORMAT_VERSION := 1.0.0
 MDFORMAT_GFM_VERSION := 1.0.0
@@ -28,17 +55,38 @@ MDFORMAT_DEPS_OK = "$(MDFORMAT_PYTHON)" -I -c 'import sys, importlib.metadata as
 # Core Tool Installation
 # ==============================================================================
 
-.PHONY: install-tools install-format-tools install-mdformat install-analysis-tools
+.PHONY: install-tools install-format-tools install-gofumpt install-gci install-goimports install-mdformat install-analysis-tools
 .PHONY: install-golangci-lint install-pre-commit-tools install-docs-tools
 
 install-tools: install-format-tools install-mdformat install-analysis-tools install-golangci-lint ## install all development tools
 	@echo -e "$(GREEN)✅ All development tools installed!$(RESET)"
 
-install-format-tools: ## install advanced formatting tools
-	@echo -e "$(CYAN)Installing formatting tools...$(RESET)"
-	@which gofumpt > /dev/null || (echo "Installing gofumpt..." && go install mvdan.cc/gofumpt@latest)
-	@which gci > /dev/null || (echo "Installing gci..." && go install github.com/daixiang0/gci@latest)
+install-format-tools: install-gofumpt install-gci install-goimports ## install the exact pinned Go formatting toolchain
 	@echo -e "$(GREEN)✅ All formatting tools installed!$(RESET)"
+
+install-gofumpt: ## install the pinned gofumpt release
+	@mkdir -p "$(FORMAT_TOOLS_DIR)"
+	@if ! $(GOFUMPT_VERSION_OK); then \
+		echo "Installing gofumpt $(GOFUMPT_VERSION) to $(GOFUMPT)..."; \
+		GOBIN="$(FORMAT_TOOLS_DIR)" go install $(GOFUMPT_MODULE)@$(GOFUMPT_VERSION) || exit 1; \
+	fi
+	@$(GOFUMPT_VERSION_OK) || { echo "gofumpt installation did not produce $(GOFUMPT_MODULE) $(GOFUMPT_VERSION) built with $$(go env GOVERSION): $(GOFUMPT)" >&2; exit 1; }
+
+install-gci: ## install the pinned gci release
+	@mkdir -p "$(FORMAT_TOOLS_DIR)"
+	@if ! $(GCI_VERSION_OK); then \
+		echo "Installing gci $(GCI_VERSION) to $(GCI)..."; \
+		GOBIN="$(FORMAT_TOOLS_DIR)" go install $(GCI_MODULE)@$(GCI_VERSION) || exit 1; \
+	fi
+	@$(GCI_VERSION_OK) || { echo "gci installation did not produce $(GCI_MODULE) $(GCI_VERSION) built with $$(go env GOVERSION): $(GCI)" >&2; exit 1; }
+
+install-goimports: ## install the pinned goimports (x/tools) release
+	@mkdir -p "$(FORMAT_TOOLS_DIR)"
+	@if ! $(GOIMPORTS_VERSION_OK); then \
+		echo "Installing goimports from $(GOIMPORTS_MODULE) $(GOIMPORTS_VERSION) to $(GOIMPORTS)..."; \
+		GOBIN="$(FORMAT_TOOLS_DIR)" go install $(GOIMPORTS_MODULE)/cmd/goimports@$(GOIMPORTS_VERSION) || exit 1; \
+	fi
+	@$(GOIMPORTS_VERSION_OK) || { echo "goimports installation did not produce $(GOIMPORTS_MODULE) $(GOIMPORTS_VERSION) built with $$(go env GOVERSION): $(GOIMPORTS)" >&2; exit 1; }
 
 install-mdformat: ## install the pinned Markdown bundle into bin/tools
 	@mkdir -p "$(dir $(MDFORMAT))"
@@ -188,8 +236,8 @@ tools-status: ## show installed tool status
 	@printf "  %-20s " "git:"; git --version 2>/dev/null | cut -d' ' -f3 || echo -e "$(RED)Not found$(RESET)"
 	@echo ""
 	@echo -e "$(GREEN)✨ Format Tools:$(RESET)"
-	@printf "  %-20s " "gofumpt:"; gofumpt --version 2>/dev/null || echo -e "$(RED)Not installed$(RESET)"
-	@printf "  %-20s " "gci:"; gci --version 2>/dev/null || echo -e "$(RED)Not installed$(RESET)"
+	@printf "  %-20s " "gofumpt:"; "$(GOFUMPT)" --version 2>/dev/null || echo -e "$(RED)Not installed$(RESET)"
+	@printf "  %-20s " "gci:"; "$(GCI)" --version 2>/dev/null || echo -e "$(RED)Not installed$(RESET)"
 	@echo ""
 	@echo -e "$(GREEN)🔍 Lint Tools:$(RESET)"
 	@printf "  %-20s " "golangci-lint:"; golangci-lint --version 2>/dev/null | cut -d' ' -f4 || echo -e "$(RED)Not installed$(RESET)"

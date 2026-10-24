@@ -16,15 +16,20 @@
 MDFORMAT_BASE ?= origin/master
 MDFORMAT_RUN = "$(MDFORMAT_PYTHON)" -I scripts/mdformat-files.py
 
+# format-check는 fmt(format-simplify)가 쓰는 것과 정확히 같은 모드를 검사해야 하므로
+# goimports 플래그를 한 곳에서 정의하고 모든 writer와 probe가 공유한다.
+GOIMPORTS_FLAGS := -local github.com/gizzahub/gzh-cli
+GCI_SECTIONS := -s standard -s default -s "prefix(github.com/gizzahub/gzh-cli)"
+
 format: format-simplify ## quick and simple formatting (default)
 fmt: format-simplify
 
-format-simplify: install-mdformat ## quick basic formatting with gofumpt, goimports, and mdformat
+format-simplify: install-format-tools install-mdformat ## quick basic formatting with gofumpt, goimports, and mdformat
 	@echo -e "$(CYAN)🚀 Quick formatting...$(RESET)"
 	@echo "1. Running gofumpt (includes go fmt + simplification)..."
-	@gofumpt -w .
+	@"$(GOFUMPT)" -w .
 	@echo "2. Organizing imports..."
-	@goimports -w -local github.com/gizzahub/gzh-cli .
+	@"$(GOIMPORTS)" -w $(GOIMPORTS_FLAGS) .
 	@echo "3. Formatting markdown files..."
 	@$(MDFORMAT_RUN) changed --base "$(MDFORMAT_BASE)" --formatter "$(MDFORMAT)"
 	@echo -e "$(GREEN)✅ Quick formatting complete!$(RESET)"
@@ -45,14 +50,32 @@ format-md-diff: install-mdformat ## format only changed markdown files
 format-strict: format-install-tools ## comprehensive formatting with all tools
 	@echo -e "$(CYAN)🔧 Strict formatting (all tools)...$(RESET)"
 	@echo "1. Running gofumpt (strict formatting + simplification)..."
-	@gofumpt -w -extra .
+	@"$(GOFUMPT)" -w -extra .
 	@echo "2. Running gci (import organization)..."
-	@gci write --skip-generated .
+	@"$(GCI)" write --skip-generated .
 	@echo "3. Organizing imports with goimports..."
-	@goimports -w -local github.com/gizzahub/gzh-cli .
+	@"$(GOIMPORTS)" -w $(GOIMPORTS_FLAGS) .
 	@echo "4. Final gci (import grouping)..."
-	@gci write --skip-generated -s standard -s default -s "prefix(github.com/gizzahub/gzh-cli)" .
+	@"$(GCI)" write --skip-generated $(GCI_SECTIONS) .
 	@echo -e "$(GREEN)✅ Strict formatting complete!$(RESET)"
+
+format-check: install-format-tools ## fail if Go files differ from `make fmt` output (non-mutating)
+	@echo -e "$(CYAN)📋 Checking Go formatting...$(RESET)"
+	@unformatted="$$("$(GOFUMPT)" -l .)" || exit 1; \
+	if [ -n "$$unformatted" ]; then \
+		echo -e "$(RED)❌ gofumpt: not formatted:$(RESET)"; \
+		printf '%s\n' "$$unformatted"; \
+		echo "   Run: make fmt"; \
+		exit 1; \
+	fi
+	@stale="$$("$(GOIMPORTS)" -l $(GOIMPORTS_FLAGS) .)" || exit 1; \
+	if [ -n "$$stale" ]; then \
+		echo -e "$(RED)❌ goimports: imports not organized:$(RESET)"; \
+		printf '%s\n' "$$stale"; \
+		echo "   Run: make fmt"; \
+		exit 1; \
+	fi
+	@echo -e "$(GREEN)✅ Go files are properly formatted$(RESET)"
 
 format-list: ## show files that need formatting
 	@echo -e "$(CYAN)📋 Files that need formatting:$(RESET)"
@@ -75,14 +98,9 @@ format-diff: ## show formatting differences
 		echo -e "$(GREEN)✅ No formatting differences found!$(RESET)"; \
 	fi
 
-format-install-tools: install-mdformat ## install advanced formatting tools
-	@echo -e "$(CYAN)Installing formatting tools...$(RESET)"
-	@which goimports > /dev/null || (echo "Installing goimports..." && go install golang.org/x/tools/cmd/goimports@latest)
-	@which gofumpt > /dev/null || (echo "Installing gofumpt..." && go install mvdan.cc/gofumpt@latest)
-	@which gci > /dev/null || (echo "Installing gci..." && go install github.com/daixiang0/gci@latest)
-	@echo -e "$(GREEN)✅ All formatting tools installed!$(RESET)"
+format-install-tools: install-format-tools install-mdformat ## install the pinned formatting tools
 
-format-file: ## format specific files with gofumpt and goimports (usage: make format-file file1.go file2.go ...)
+format-file: install-format-tools ## format specific files with gofumpt and goimports (usage: make format-file file1.go file2.go ...)
 	@if [ -z "$(MAKECMDGOALS)" ] || [ "$(words $(MAKECMDGOALS))" -eq 1 ]; then \
 		echo -e "$(RED)❌ Error: At least one file must be specified$(RESET)"; \
 		echo -e "$(YELLOW)Usage: make format-file file1.go file2.go ...$(RESET)"; \
@@ -101,23 +119,23 @@ format-file: ## format specific files with gofumpt and goimports (usage: make fo
 			fi; \
 			echo -e "$(CYAN)📝 Formatting file: $$file$(RESET)"; \
 			echo "  1. Running gofumpt..."; \
-			gofumpt -w "$$file" || echo -e "$(RED)❌ gofumpt failed for $$file$(RESET)"; \
+			"$(GOFUMPT)" -w "$$file" || echo -e "$(RED)❌ gofumpt failed for $$file$(RESET)"; \
 			echo "  2. Running goimports..."; \
-			goimports -w -local github.com/gizzahub/gzh-cli "$$file" || echo -e "$(RED)❌ goimports failed for $$file$(RESET)"; \
+			"$(GOIMPORTS)" -w $(GOIMPORTS_FLAGS) "$$file" || echo -e "$(RED)❌ goimports failed for $$file$(RESET)"; \
 			echo -e "$(GREEN)✅ File '$$file' formatted successfully!$(RESET)"; \
 		fi; \
 	done
 	@echo -e "$(GREEN)🎉 All files processed!$(RESET)"
 
-fmt-diff: ## format only changed files (fast, for pre-commit)
+fmt-diff: install-format-tools ## format only changed files (fast, for pre-commit)
 	@echo -e "$(CYAN)🚀 Formatting changed files only...$(RESET)"
 	@CHANGED_FILES=$$(git diff --name-only --diff-filter=d HEAD | grep '\.go$$' || true); \
 	if [ -n "$$CHANGED_FILES" ]; then \
 		echo "$$CHANGED_FILES" | while read file; do \
 			if [ -f "$$file" ]; then \
 				echo -e "$(CYAN)📝 Formatting: $$file$(RESET)"; \
-				gofumpt -w "$$file" || echo -e "$(RED)❌ gofumpt failed for $$file$(RESET)"; \
-				goimports -w -local github.com/gizzahub/gzh-cli "$$file" || echo -e "$(RED)❌ goimports failed for $$file$(RESET)"; \
+				"$(GOFUMPT)" -w "$$file" || echo -e "$(RED)❌ gofumpt failed for $$file$(RESET)"; \
+				"$(GOIMPORTS)" -w $(GOIMPORTS_FLAGS) "$$file" || echo -e "$(RED)❌ goimports failed for $$file$(RESET)"; \
 			fi; \
 		done; \
 		echo -e "$(GREEN)✅ Changed files formatted!$(RESET)"; \
