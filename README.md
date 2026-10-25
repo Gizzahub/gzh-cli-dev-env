@@ -166,4 +166,4 @@ type ServiceSwitcher interface {
 
 ## License
 
-MIT License - Copyright (c) 2025 Archmagece
+MIT License - Copyright (c) 2025 Gizzahub
