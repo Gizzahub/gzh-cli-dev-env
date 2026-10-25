@@ -75,9 +75,12 @@ run: ## run the application (usage: make run [args...] or ARGS="args" make run)
 		go run -ldflags "-X main.version=$(VERSION)" ./cmd/gzh-git; \
 	fi
 
-# Prevent make from interpreting arguments as targets
+# Only the documented positional-argument entrypoints accept extra goals.
+# All other unknown goals must retain Make's nonzero missing-target error.
+ifneq ($(filter run format-file,$(firstword $(MAKECMDGOALS))),)
 %:
 	@:
+endif
 
 bootstrap: ## install build dependencies
 	@echo -e "$(CYAN)Installing build dependencies...$(RESET)"

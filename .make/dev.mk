@@ -31,7 +31,18 @@ logs:                         ## show recent log files
 # Development Workflow Targets
 # ==============================================================================
 
-.PHONY: dev dev-fast verify ci-local pr-check
+.PHONY: dev dev-fast verify ci-local pr-check check make-contract-test
+
+# Recursive invocations keep these checks ordered and fail fast even with -j.
+# Unlike dev, this entrypoint checks formatting without rewriting source files.
+check: ## check formatting, lint, tests, and the Make entrypoint contract
+	+$(MAKE) format-check
+	+$(MAKE) lint-check
+	+$(MAKE) test
+	+$(MAKE) make-contract-test
+
+make-contract-test: ## test Make goal dispatch and check-stage failure propagation
+	@/bin/bash scripts/test-make-contract.sh
 
 dev: fmt lint-check test ## run standard development workflow (format, lint, test)
 	@echo -e "$(GREEN)✅ Standard development workflow completed!$(RESET)"
