@@ -462,6 +462,7 @@ func TestDisplayResults(t *testing.T) {
 }
 
 func TestRegisterDefaultSwitchers(t *testing.T) {
+	assertQuery := wiringAWSFixture(t, false)
 	sw := environment.NewEnvironmentSwitcher()
 	registerDefaultSwitchers(sw)
 	env := &environment.Environment{
@@ -470,10 +471,10 @@ func TestRegisterDefaultSwitchers(t *testing.T) {
 			"aws": {AWS: &environment.AWSConfig{Profile: "default", Region: "us-east-1"}},
 		},
 	}
-	// Dry-run never calls Switch; registration is enough for the path to run.
+	// Dry-run still snapshots through the real default AWS switcher; only its executable is isolated.
 	result, err := sw.SwitchEnvironment(context.Background(), env, environment.SwitchOptions{
 		DryRun:  true,
-		Timeout: time.Second,
+		Timeout: 5 * time.Second,
 	})
 	if err != nil {
 		t.Fatalf("SwitchEnvironment after register: %v", err)
@@ -481,6 +482,7 @@ func TestRegisterDefaultSwitchers(t *testing.T) {
 	if !result.Success {
 		t.Errorf("expected success for dry-run, got %+v", result)
 	}
+	assertQuery()
 }
 
 func TestSwitchAll_Run_MissingEnv(t *testing.T) {
@@ -492,6 +494,7 @@ func TestSwitchAll_Run_MissingEnv(t *testing.T) {
 }
 
 func TestSwitchAll_Run_FromFileDryRun(t *testing.T) {
+	assertQuery := wiringAWSFixture(t, false)
 	dir := t.TempDir()
 	path := filepath.Join(dir, "dev.yaml")
 	content := []byte(`
@@ -514,7 +517,7 @@ postHooks:
 		fromFile: path,
 		dryRun:   true,
 		force:    true,
-		timeout:  time.Second,
+		timeout:  5 * time.Second,
 	}
 	out := captureStdout(t, func() {
 		if err := opts.run(context.Background()); err != nil {
@@ -527,6 +530,7 @@ postHooks:
 	if !strings.Contains(out, "Successfully switched") {
 		t.Errorf("output missing success: %q", out)
 	}
+	assertQuery()
 }
 
 func TestSelectEnvironmentInteractively_None(t *testing.T) {
