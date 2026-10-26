@@ -5,6 +5,7 @@ package ssh
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,10 +34,12 @@ func (s *Switcher) Name() string {
 
 // Switch activates the specified SSH configuration path.
 func (s *Switcher) Switch(ctx context.Context, config any) error {
-	_ = ctx
+	if err := contextErr(ctx); err != nil {
+		return err
+	}
 
 	sshConfig, ok := config.(*environment.SSHConfig)
-	if !ok {
+	if !ok || sshConfig == nil {
 		return fmt.Errorf("invalid SSH configuration type")
 	}
 	if sshConfig.Config == "" {
@@ -68,13 +71,15 @@ func (s *Switcher) Switch(ctx context.Context, config any) error {
 		return nil
 	}
 
-	return activateConfig(source, active)
+	return activateConfig(ctx, source, active, operatingLinkFS())
 }
 
 // GetCurrentState reports the active SSH config path (empty when absent).
 // Symlink targets are resolved so the returned path is the content source.
 func (s *Switcher) GetCurrentState(ctx context.Context) (any, error) {
-	_ = ctx
+	if err := contextErr(ctx); err != nil {
+		return nil, err
+	}
 
 	active, err := defaultConfigPath()
 	if err != nil {
@@ -113,7 +118,45 @@ func (s *Switcher) GetCurrentState(ctx context.Context) (any, error) {
 
 // Rollback restores a previous SSH configuration state.
 func (s *Switcher) Rollback(ctx context.Context, previousState any) error {
-	return s.Switch(ctx, previousState)
+	if err := contextErr(ctx); err != nil {
+		return err
+	}
+	config, ok := previousState.(*environment.SSHConfig)
+	if !ok || config == nil {
+		return fmt.Errorf("invalid SSH configuration type")
+	}
+	if config.Config != "" {
+		return s.Switch(ctx, config)
+	}
+	active, err := defaultConfigPath()
+	if err != nil {
+		return err
+	}
+	info, err := os.Lstat(active)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("stat active SSH config: %w", err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		return fmt.Errorf("refusing to remove unmanaged SSH config: %s", active)
+	}
+	if err := contextErr(ctx); err != nil {
+		return err
+	}
+	if err := os.Remove(active); err != nil {
+		return fmt.Errorf("remove SSH config symlink: %w", err)
+	}
+	return nil
+}
+
+// nil은 기존 호출과 같이 제한 없는 맥락으로 취급한다.
+func contextErr(ctx context.Context) error {
+	if ctx == nil {
+		return nil
+	}
+	return ctx.Err()
 }
 
 func defaultConfigPath() (string, error) {
@@ -159,36 +202,70 @@ func sameFile(a, b string) bool {
 	return os.SameFile(ai, bi)
 }
 
-// activateConfig makes source the active SSH config at activePath.
-// Only creates or retargets a symlink; never overwrites a regular file.
-func activateConfig(source, activePath string) error {
-	if err := os.MkdirAll(filepath.Dir(activePath), 0o700); err != nil {
+// linkFS는 호출마다 전달하는 테스트 경계이며 switcher 상태나 전역 재정의를 만들지 않는다.
+type linkFS struct {
+	mkdirTemp func(string, string) (string, error)
+	symlink   func(string, string) error
+	rename    func(string, string) error
+	remove    func(string) error
+	lstat     func(string) (os.FileInfo, error)
+}
+
+func operatingLinkFS() linkFS {
+	return linkFS{mkdirTemp: os.MkdirTemp, symlink: os.Symlink, rename: os.Rename, remove: os.Remove, lstat: os.Lstat}
+}
+
+// activateConfig는 같은 파일시스템의 임시 링크를 rename하여 이전 링크를 먼저 지우지 않는다.
+// 다른 프로세스와의 동시 변경이나 모든 OS에서의 원자성을 보장하지 않는다.
+func activateConfig(ctx context.Context, source, activePath string, fs linkFS) (resultErr error) {
+	if err := contextErr(ctx); err != nil {
+		return err
+	}
+	if err := ensureManagedLink(activePath, fs); err != nil {
+		return err
+	}
+	parent := filepath.Dir(activePath)
+	if err := os.MkdirAll(parent, 0o700); err != nil {
 		return fmt.Errorf("create .ssh directory: %w", err)
 	}
-
-	info, err := os.Lstat(activePath)
+	stageDir, err := fs.mkdirTemp(parent, ".config-switch-*")
 	if err != nil {
-		if !os.IsNotExist(err) {
-			return fmt.Errorf("stat active SSH config: %w", err)
+		return fmt.Errorf("stage SSH config directory: %w", err)
+	}
+	stage := filepath.Join(stageDir, "config")
+	defer func() {
+		if err := fs.remove(stage); err != nil && !os.IsNotExist(err) {
+			resultErr = errors.Join(resultErr, fmt.Errorf("clean staged SSH config: %w", err))
 		}
-		if err := os.Symlink(source, activePath); err != nil {
-			return fmt.Errorf("activate SSH config %s: %w", source, err)
+		if err := fs.remove(stageDir); err != nil {
+			resultErr = errors.Join(resultErr, fmt.Errorf("clean SSH staging directory: %w", err))
 		}
+	}()
+	if err := fs.symlink(source, stage); err != nil {
+		return fmt.Errorf("stage SSH config %s: %w", source, err)
+	}
+	if err := ensureManagedLink(activePath, fs); err != nil {
+		return err
+	}
+	if err := contextErr(ctx); err != nil {
+		return err
+	}
+	if err := fs.rename(stage, activePath); err != nil {
+		return fmt.Errorf("activate SSH config %s: %w", source, err)
+	}
+	return nil
+}
+
+func ensureManagedLink(active string, fs linkFS) error {
+	info, err := fs.lstat(active)
+	if os.IsNotExist(err) {
 		return nil
 	}
-
+	if err != nil {
+		return fmt.Errorf("stat active SSH config: %w", err)
+	}
 	if info.Mode()&os.ModeSymlink == 0 {
-		return fmt.Errorf(
-			"cannot switch SSH config to %s: %s is a regular file (not a managed symlink); refusing to overwrite",
-			source, activePath,
-		)
-	}
-
-	if err := os.Remove(activePath); err != nil {
-		return fmt.Errorf("remove SSH config symlink: %w", err)
-	}
-	if err := os.Symlink(source, activePath); err != nil {
-		return fmt.Errorf("activate SSH config %s: %w", source, err)
+		return fmt.Errorf("cannot switch SSH config: %s is not a managed symlink; refusing to overwrite", active)
 	}
 	return nil
 }
