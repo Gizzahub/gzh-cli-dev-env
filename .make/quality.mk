@@ -79,7 +79,7 @@ format-check: install-format-tools ## fail if Go files differ from `make fmt` ou
 
 format-list: ## show files that need formatting
 	@echo -e "$(CYAN)📋 Files that need formatting:$(RESET)"
-	@FILES=$$(gofmt -l .); \
+	@FILES=$$(gofmt -l .) || exit $$?; \
 	if [ -n "$$FILES" ]; then \
 		echo "$$FILES" | while read file; do echo "  $(YELLOW)$$file$(RESET)"; done; \
 		echo ""; \
@@ -91,7 +91,7 @@ format-list: ## show files that need formatting
 
 format-diff: ## show formatting differences
 	@echo -e "$(CYAN)📝 Formatting differences:$(RESET)"
-	@DIFF_OUTPUT=$$(gofmt -d .); \
+	@DIFF_OUTPUT=$$(gofmt -d .) || exit $$?; \
 	if [ -n "$$DIFF_OUTPUT" ]; then \
 		echo "$$DIFF_OUTPUT"; \
 	else \

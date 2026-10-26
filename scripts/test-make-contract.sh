@@ -23,7 +23,7 @@ cleanup() {
     fi
     rm -f -- "$fixture/override.mk" "$fixture/go" "$fixture/formatter" \
         "$fixture/trace" "$fixture/stdout" "$fixture/stderr" "$fixture/sample.go" \
-        "$fixture/second.go" "$fixture/diff.mk" "$fixture/cleanup-paths"
+        "$fixture/second.go" "$fixture/gofmt" "$fixture/diff.mk" "$fixture/cleanup-paths"
     rmdir -- "$fixture"
 }
 trap cleanup EXIT
@@ -232,5 +232,74 @@ invoke_diff_with_bad_head
 expect_no_stdout 'No Go files changed'
 expect_no_stdout 'Changed files formatted!'
 expect_trace ""
+
+# Exercise the actual read-only probes with a fixed executable, including
+# failures which wrote partial stdout before returning an error.
+cat > "$fixture/gofmt" <<'EOF'
+#!/bin/sh
+printf 'gofmt:%s\n' "$*" >> "$CONTRACT_TRACE"
+case "$CONTRACT_GOFMT_MODE" in
+    dirty|partial-error)
+        if [ "$1" = -l ]; then
+            printf 'first.go\n'
+        else
+            printf 'diff controlled-first.go\n'
+        fi
+        ;;
+esac
+case "$CONTRACT_GOFMT_MODE" in
+    error|partial-error)
+        printf 'controlled-gofmt-failure:%s\n' "$*" >&2
+        exit 23
+        ;;
+esac
+EOF
+chmod +x "$fixture/gofmt"
+invoke_probe() {
+    scenarios=$((scenarios + 1))
+    : > "$CONTRACT_TRACE"
+    if make --no-print-directory -C "$fixture/repo" -f "$fixture/diff.mk" "$1" \
+        > "$fixture/stdout" 2> "$fixture/stderr"; then
+        result=0
+    else
+        result=$?
+    fi
+}
+probe_before=$(cksum "$fixture/repo/first.go" "$fixture/repo/second.go" "$fixture/repo/note.txt")
+for target in format-list format-diff; do
+    flag=-l
+    success='All files are properly formatted!'
+    dirty='first.go'
+    if [ "$target" = format-diff ]; then
+        flag=-d
+        success='No formatting differences found!'
+        dirty='diff controlled-first.go'
+    fi
+    for mode in clean dirty error partial-error; do
+        export CONTRACT_GOFMT_MODE="$mode"
+        invoke_probe "$target"
+        expect_trace "gofmt:$flag ."
+        case "$mode" in
+            clean)
+                [ "$result" -eq 0 ]
+                grep -Fq "$success" "$fixture/stdout"
+                ;;
+            dirty)
+                [ "$result" -eq 0 ]
+                grep -Fq "$dirty" "$fixture/stdout"
+                expect_no_stdout "$success"
+                ;;
+            error|partial-error)
+                [ "$result" -ne 0 ]
+                grep -Fq "controlled-gofmt-failure:$flag ." "$fixture/stderr"
+                grep -Fq 'Error 23' "$fixture/stderr"
+                expect_no_stdout "$success"
+                expect_no_stdout "$dirty"
+                ;;
+        esac
+        probe_after=$(cksum "$fixture/repo/first.go" "$fixture/repo/second.go" "$fixture/repo/note.txt")
+        [ "$probe_before" = "$probe_after" ]
+    done
+done
 
 printf 'Make contract regression passed (%s scenarios).\n' "$scenarios"
