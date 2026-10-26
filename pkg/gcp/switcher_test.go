@@ -104,6 +104,7 @@ func TestSwitcher_Rollback_InvalidState(t *testing.T) {
 
 // TestSwitcher_Switch_EmptyProject tests Switch with empty project.
 func TestSwitcher_Switch_EmptyProject(t *testing.T) {
+	trace := checkerFixture(t, map[string]checkerResponse{})
 	switcher := NewSwitcher()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -118,12 +119,18 @@ func TestSwitcher_Switch_EmptyProject(t *testing.T) {
 	err := switcher.Switch(ctx, config)
 	// Should succeed since empty project means no action
 	if err != nil {
-		t.Logf("Switch() with empty project error = %v", err)
+		t.Fatalf("Switch() with empty project error = %v", err)
 	}
+	assertCheckerCalls(t, trace)
 }
 
 // TestSwitcher_Switch_ValidConfig tests Switch with valid config structure.
 func TestSwitcher_Switch_ValidConfig(t *testing.T) {
+	trace := checkerFixture(t, map[string]checkerResponse{
+		"config set project test-project-id":          {},
+		"config set account test-account@example.com": {},
+		"config set compute/region us-central1":       {},
+	})
 	switcher := NewSwitcher()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -135,20 +142,26 @@ func TestSwitcher_Switch_ValidConfig(t *testing.T) {
 	}
 
 	err := switcher.Switch(ctx, config)
-	// May fail if gcloud is not installed, but should not panic
+	// 소유 native fixture로만 공개 Switch 경로를 실행한다.
 	if err != nil {
-		t.Logf("Switch() with valid config error (expected if gcloud not installed) = %v", err)
+		t.Fatalf("Switch() error = %v", err)
 	}
+	assertCheckerCalls(t, trace, "gcloud config set project test-project-id", "gcloud config set account test-account@example.com", "gcloud config set compute/region us-central1")
 }
 
 // TestSwitcher_Rollback_WithValidState tests Rollback with valid state.
 func TestSwitcher_Rollback_WithValidState(t *testing.T) {
+	responses := defaultCheckerResponses()
+	responses["config set project project-1"] = checkerResponse{}
+	responses["config set account user@example.invalid"] = checkerResponse{}
+	responses["config set compute/region region-1"] = checkerResponse{}
+	trace := checkerFixture(t, responses)
 	switcher := NewSwitcher()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	// Get current state first
-	state, err := switcher.getCurrentState(ctx, successfulSnapshotOutput)
+	state, err := switcher.GetCurrentState(ctx)
 	if err != nil {
 		t.Fatalf("GetCurrentState() error = %v", err)
 	}
@@ -156,8 +169,9 @@ func TestSwitcher_Rollback_WithValidState(t *testing.T) {
 	// Rollback to current state should work
 	err = switcher.Rollback(ctx, state)
 	if err != nil {
-		t.Logf("Rollback() with current state error (expected if gcloud not installed) = %v", err)
+		t.Fatalf("Rollback() error = %v", err)
 	}
+	assertCheckerCalls(t, trace, "gcloud config get-value project", "gcloud config get-value account", "gcloud config get-value compute/region", "gcloud config set project project-1", "gcloud config set account user@example.invalid", "gcloud config set compute/region region-1")
 }
 
 // TestSwitcher_GetCurrentState_ReturnsGCPConfig tests return type.

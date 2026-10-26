@@ -13,22 +13,11 @@ func NewRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "dev-env",
 		Short: "Manage development environment configurations",
-		Long: `Save and load development environment configurations.
+		Long: `Inspect and switch development environments for AWS, Google Cloud,
+Azure, Docker, Kubernetes, and SSH.
 
-This command helps you backup, restore, and manage various development
-environment configurations including:
-- Kubernetes configurations (kubeconfig)
-- Docker configurations
-- AWS configurations and credentials
-- AWS profile management with SSO support
-- Google Cloud (GCloud) configurations and credentials
-- GCP project management and gcloud configurations
-- Azure subscription management with multi-tenant support
-- SSH configurations
-- And more...
-
-This is useful when setting up new development machines, switching between
-projects, or maintaining consistent environments across multiple machines.
+Use status to inspect service state, tui to view the dashboard, and switch-all
+to apply a named YAML environment across configured services.
 
 Examples:
   # Show status of all development environment services

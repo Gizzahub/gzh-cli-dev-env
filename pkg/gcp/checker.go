@@ -119,7 +119,7 @@ func (g *Checker) CheckHealth(ctx context.Context) (*status.HealthStatus, error)
 	}
 
 	health.Status = status.StatusActive
-	health.Message = "GCP credentials are valid and accessible"
+	health.Message = "gcloud authentication configuration is readable"
 	health.Details["auth_list"] = string(output)
 
 	return health, nil

@@ -34,10 +34,10 @@ func newSwitchAllCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "switch-all",
-		Short: "Switch all development environments atomically",
+		Short: "Switch configured development environments",
 		Long: `Switch multiple cloud services and development environments to a target state.
 
-This command provides atomic environment switching across all configured services:
+This command switches configured development contexts:
 - AWS profiles, regions, and accounts
 - GCP projects and accounts
 - Azure subscriptions and tenants
@@ -45,7 +45,9 @@ This command provides atomic environment switching across all configured service
 - Kubernetes clusters and namespaces
 - SSH configurations
 
-All services are switched atomically - either all succeed or all are rolled back.
+Services follow configured dependency order. Failed switches trigger rollback
+attempts for captured previous states. Rollback failures can leave partial changes.
+Dry-run reads current state and skips service changes, hooks, and rollback.
 
 Examples:
   # Switch to production environment

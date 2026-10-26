@@ -34,6 +34,8 @@ func TestChecker_ImplementsInterface(t *testing.T) {
 
 // TestChecker_CheckStatus_ReturnsValidStatus tests CheckStatus returns valid status structure.
 func TestChecker_CheckStatus_ReturnsValidStatus(t *testing.T) {
+	assertCalls := dockerCheckerFixture(t, "normal")
+	t.Cleanup(func() { assertCalls([][]string{{"info"}, {"context", "show"}}) })
 	checker := NewChecker()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -64,6 +66,10 @@ func TestChecker_CheckStatus_ReturnsValidStatus(t *testing.T) {
 
 // TestChecker_CheckHealth_ReturnsValidHealth tests CheckHealth returns valid health structure.
 func TestChecker_CheckHealth_ReturnsValidHealth(t *testing.T) {
+	assertCalls := dockerCheckerFixture(t, "normal")
+	t.Cleanup(func() {
+		assertCalls([][]string{{"info", "--format", "{{.ServerVersion}}"}, {"system", "df", "--format", "table"}, {"ps", "-q"}})
+	})
 	checker := NewChecker()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

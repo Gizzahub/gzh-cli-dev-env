@@ -67,11 +67,11 @@ func (a *Checker) CheckStatus(ctx context.Context) (*status.ServiceStatus, error
 	st.Current.Profile = profile
 
 	// Get current region
-	region := a.getCurrentRegion()
+	region := a.getCurrentRegion(ctx, profile)
 	st.Current.Region = region
 
 	// Check credentials validity
-	credStatus, err := a.checkCredentials(ctx)
+	credStatus, err := a.checkCredentials(ctx, profile)
 	if err != nil {
 		st.Status = status.StatusError
 		st.Details["credential_error"] = err.Error()
@@ -99,7 +99,12 @@ func (a *Checker) CheckHealth(ctx context.Context) (*status.HealthStatus, error)
 	}
 
 	// Test STS GetCallerIdentity
-	cmd := exec.CommandContext(ctx, "aws", "sts", "get-caller-identity", "--output", "json")
+	profile := a.getCurrentProfile()
+	args := []string{"sts", "get-caller-identity", "--output", "json"}
+	if profile != "" {
+		args = append(args, "--profile", profile)
+	}
+	cmd := exec.CommandContext(ctx, "aws", args...)
 	output, err := cmd.Output()
 	health.Duration = time.Since(start)
 
@@ -133,7 +138,7 @@ func (a *Checker) getCurrentProfile() string {
 }
 
 // getCurrentRegion gets the current AWS region.
-func (a *Checker) getCurrentRegion() string {
+func (a *Checker) getCurrentRegion(ctx context.Context, profile string) string {
 	// Check AWS_REGION environment variable
 	if region := os.Getenv("AWS_REGION"); region != "" {
 		return region
@@ -146,11 +151,10 @@ func (a *Checker) getCurrentRegion() string {
 
 	// Try to get from AWS config for the active profile
 	args := []string{awsCLIConfigure, "get", awsCLIRegion}
-	if profile := resolveActiveProfile(); profile != "" {
+	if profile != "" {
 		args = append(args, "--profile", profile)
 	}
-	//nolint:noctx // function lacks context parameter; cannot use CommandContext
-	cmd := exec.Command("aws", args...)
+	cmd := exec.CommandContext(ctx, "aws", args...)
 	output, err := cmd.Output()
 	if err == nil && len(output) > 0 {
 		return strings.TrimSpace(string(output))
@@ -162,14 +166,18 @@ func (a *Checker) getCurrentRegion() string {
 // checkCredentials checks AWS credentials validity.
 //
 //nolint:unparam // intentional: error always nil; errors converted to status fields
-func (a *Checker) checkCredentials(ctx context.Context) (*status.CredentialStatus, error) {
+func (a *Checker) checkCredentials(ctx context.Context, profile string) (*status.CredentialStatus, error) {
 	credStatus := &status.CredentialStatus{
 		Valid: false,
 		Type:  "aws-credentials",
 	}
 
 	// Test credentials with a simple STS call
-	cmd := exec.CommandContext(ctx, "aws", "sts", "get-caller-identity")
+	args := []string{"sts", "get-caller-identity"}
+	if profile != "" {
+		args = append(args, "--profile", profile)
+	}
+	cmd := exec.CommandContext(ctx, "aws", args...)
 	err := cmd.Run()
 	if err != nil {
 		credStatus.Warning = CredentialsExpiredMsg
@@ -178,15 +186,6 @@ func (a *Checker) checkCredentials(ctx context.Context) (*status.CredentialStatu
 	}
 
 	credStatus.Valid = true
-
-	// Try to get session token expiration (for assumed roles)
-	cmd = exec.CommandContext(ctx, "aws", "sts", "get-session-token", "--duration-seconds", "900")
-	output, err := cmd.Output()
-	if err == nil && len(output) > 0 {
-		// Parse session token response to get expiration
-		// This is a simplified check - in practice you'd parse the JSON
-		credStatus.Type = "session-token"
-	}
 
 	return credStatus, nil
 }

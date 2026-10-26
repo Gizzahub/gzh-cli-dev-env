@@ -34,6 +34,7 @@ func TestChecker_ImplementsInterface(t *testing.T) {
 
 // TestChecker_CheckStatus_ReturnsValidStatus tests CheckStatus returns valid status structure.
 func TestChecker_CheckStatus_ReturnsValidStatus(t *testing.T) {
+	checkerFixture(t, nil)
 	checker := NewChecker()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -65,6 +66,7 @@ func TestChecker_CheckStatus_ReturnsValidStatus(t *testing.T) {
 
 // TestChecker_CheckHealth_ReturnsValidHealth tests CheckHealth returns valid health structure.
 func TestChecker_CheckHealth_ReturnsValidHealth(t *testing.T) {
+	checkerFixture(t, nil)
 	checker := NewChecker()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -92,6 +94,7 @@ func TestChecker_CheckHealth_ReturnsValidHealth(t *testing.T) {
 
 // TestChecker_isCLIAvailable tests CLI availability check.
 func TestChecker_isCLIAvailable(t *testing.T) {
+	checkerFixture(t, nil)
 	checker := NewChecker()
 	// Just verify it doesn't panic and returns a boolean
 	result := checker.isCLIAvailable()
@@ -100,6 +103,7 @@ func TestChecker_isCLIAvailable(t *testing.T) {
 
 // TestChecker_CheckHealth_HasTimestamp tests CheckHealth sets timestamp correctly.
 func TestChecker_CheckHealth_HasTimestamp(t *testing.T) {
+	checkerFixture(t, nil)
 	checker := NewChecker()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -123,6 +127,7 @@ func TestChecker_CheckHealth_HasTimestamp(t *testing.T) {
 
 // TestChecker_CheckStatus_DetailsNotNil tests that details map is initialized.
 func TestChecker_CheckStatus_DetailsNotNil(t *testing.T) {
+	checkerFixture(t, nil)
 	checker := NewChecker()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -139,6 +144,7 @@ func TestChecker_CheckStatus_DetailsNotNil(t *testing.T) {
 
 // TestChecker_CheckStatus_HasLastUsed tests that LastUsed is set.
 func TestChecker_CheckStatus_HasLastUsed(t *testing.T) {
+	checkerFixture(t, nil)
 	checker := NewChecker()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -158,6 +164,7 @@ func TestChecker_CheckStatus_HasLastUsed(t *testing.T) {
 
 // TestChecker_CheckHealth_HasDetails tests that health details are populated.
 func TestChecker_CheckHealth_HasDetails(t *testing.T) {
+	checkerFixture(t, nil)
 	checker := NewChecker()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -174,6 +181,7 @@ func TestChecker_CheckHealth_HasDetails(t *testing.T) {
 
 // TestChecker_CheckStatus_ContextCanceled tests behavior with canceled context.
 func TestChecker_CheckStatus_ContextCanceled(t *testing.T) {
+	checkerFixture(t, nil)
 	checker := NewChecker()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately

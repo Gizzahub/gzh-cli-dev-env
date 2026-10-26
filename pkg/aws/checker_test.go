@@ -35,6 +35,7 @@ func TestChecker_ImplementsInterface(t *testing.T) {
 
 // TestChecker_CheckStatus_ReturnsValidStatus tests CheckStatus returns valid status structure.
 func TestChecker_CheckStatus_ReturnsValidStatus(t *testing.T) {
+	checkerFixture(t, nil)
 	checker := NewChecker()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -66,6 +67,7 @@ func TestChecker_CheckStatus_ReturnsValidStatus(t *testing.T) {
 
 // TestChecker_CheckHealth_ReturnsValidHealth tests CheckHealth returns valid health structure.
 func TestChecker_CheckHealth_ReturnsValidHealth(t *testing.T) {
+	checkerFixture(t, nil)
 	checker := NewChecker()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -165,7 +167,7 @@ func TestChecker_getCurrentRegion_WithEnvVar(t *testing.T) {
 	testRegion := "ap-northeast-2"
 	os.Setenv("AWS_REGION", testRegion)
 
-	region := checker.getCurrentRegion()
+	region := checker.getCurrentRegion(context.Background(), "fixture")
 	if region != testRegion {
 		t.Errorf("getCurrentRegion() = %q, want %q", region, testRegion)
 	}
@@ -188,7 +190,7 @@ func TestChecker_getCurrentRegion_WithDefaultEnvVar(t *testing.T) {
 	testRegion := "eu-west-1"
 	os.Setenv("AWS_DEFAULT_REGION", testRegion)
 
-	region := checker.getCurrentRegion()
+	region := checker.getCurrentRegion(context.Background(), "fixture")
 	if region != testRegion {
 		t.Errorf("getCurrentRegion() = %q, want %q", region, testRegion)
 	}
