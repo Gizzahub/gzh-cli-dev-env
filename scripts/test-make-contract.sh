@@ -2,6 +2,12 @@
 # Exercise the actual repository recipes without installing or running tools.
 set -euo pipefail
 
+# Git configuration injection and redirects must not escape this test's fixture.
+while IFS= read -r variable; do
+    case "$variable" in GIT_*) unset "$variable" ;; esac
+done < <(compgen -e)
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 mkdir -p "$root/tmp"
 fixture=$(mktemp -d "$root/tmp/make-contract.XXXXXX")
@@ -10,13 +16,21 @@ cleanup() {
     if [ "$status" -ne 0 ]; then
         cat "$fixture/stdout" "$fixture/stderr" >&2
     fi
+    if [ -d "$fixture/repo" ]; then
+        # Only this test-created repository is recursively removed.
+        find "$fixture/repo" -print > "$fixture/cleanup-paths"
+        rm -rf -- "$fixture/repo"
+    fi
     rm -f -- "$fixture/override.mk" "$fixture/go" "$fixture/formatter" \
-        "$fixture/trace" "$fixture/stdout" "$fixture/stderr" "$fixture/sample.go"
+        "$fixture/trace" "$fixture/stdout" "$fixture/stderr" "$fixture/sample.go" \
+        "$fixture/second.go" "$fixture/diff.mk" "$fixture/cleanup-paths"
     rmdir -- "$fixture"
 }
 trap cleanup EXIT
 export CONTRACT_TRACE="$fixture/trace"
 export CONTRACT_FAIL_STAGE=""
+export CONTRACT_FORMATTER_FAIL=""
+scenarios=0
 
 cat > "$fixture/go" <<'EOF'
 #!/bin/sh
@@ -28,10 +42,15 @@ EOF
 cat > "$fixture/formatter" <<'EOF'
 #!/bin/sh
 printf 'formatter:%s\n' "$*" >> "$CONTRACT_TRACE"
+if [ -n "$CONTRACT_FORMATTER_FAIL" ] && [ "$*" = "$CONTRACT_FORMATTER_FAIL" ]; then
+    echo "controlled-formatter-failure:$*" >&2
+    exit 23
+fi
 EOF
 chmod +x "$fixture/go" "$fixture/formatter"
 export PATH="$fixture:$PATH"
 printf 'package fixture\n' > "$fixture/sample.go"
+printf 'package fixture\n' > "$fixture/second.go"
 
 # The explicit MAKE variable propagates overrides to recursive invocations.
 cat > "$fixture/override.mk" <<'EOF'
@@ -44,6 +63,7 @@ clean build install-format-tools install-gofumpt install-goimports install-gci i
 EOF
 
 invoke() {
+    scenarios=$((scenarios + 1))
     : > "$CONTRACT_TRACE"
     if make --no-print-directory -C "$root" -f Makefile -f "$fixture/override.mk" \
         MAKE="make --no-print-directory -f Makefile -f $fixture/override.mk" \
@@ -60,6 +80,15 @@ expect_trace() {
     if [ "$actual" != "$expected" ]; then
         printf 'Unexpected trace\nexpected: %s\nactual: %s\n' "$expected" "$actual" >&2
         exit 1
+    fi
+}
+expect_no_stdout() {
+    if grep -Fq "$1" "$fixture/stdout"; then
+        printf 'Unexpected success output: %s\n' "$1" >&2
+        exit 1
+    else
+        local status=$?
+        [ "$status" -eq 1 ] || exit "$status"
     fi
 }
 
@@ -96,4 +125,112 @@ invoke GOFUMPT="$fixture/formatter" GOIMPORTS="$fixture/formatter" format-file "
 expect_trace "formatter:-w $fixture/sample.go
 formatter:-w -local github.com/gizzahub/gzh-cli $fixture/sample.go"
 
-echo 'Make contract regression passed (9 scenarios).'
+# Stop at the failing tool/file, preserving its stderr and withholding the
+# failing file's success message and the final aggregate success message.
+for file in "$fixture/sample.go" "$fixture/second.go"; do
+    for tool in gofumpt goimports; do
+        expected=""
+        for current in "$fixture/sample.go" "$fixture/second.go"; do
+            line="formatter:-w $current"
+            expected="${expected}${expected:+$'\n'}$line"
+            [ "$current" != "$file" ] || [ "$tool" != gofumpt ] || break
+            line="formatter:-w -local github.com/gizzahub/gzh-cli $current"
+            expected="${expected}${expected:+$'\n'}$line"
+            [ "$current" != "$file" ] || break
+        done
+        args="-w $file"
+        [ "$tool" != goimports ] || args="-w -local github.com/gizzahub/gzh-cli $file"
+        export CONTRACT_FORMATTER_FAIL="$args"
+        invoke GOFUMPT="$fixture/formatter" GOIMPORTS="$fixture/formatter" format-file "$fixture/sample.go" "$fixture/second.go"
+        [ "$result" -ne 0 ]
+        grep -Fq 'controlled-formatter-failure:' "$fixture/stderr"
+        grep -Fq "$tool failed for $file" "$fixture/stderr"
+        expect_no_stdout "File '$file' formatted successfully"
+        expect_no_stdout 'All files processed'
+        expect_trace "$expected"
+    done
+done
+export CONTRACT_FORMATTER_FAIL=""
+
+invoke format-file
+[ "$result" -ne 0 ]
+expect_trace ""
+invoke GOFUMPT="$fixture/formatter" GOIMPORTS="$fixture/formatter" format-file "$fixture/missing.go"
+[ "$result" -ne 0 ]
+grep -Fq 'does not exist' "$fixture/stderr"
+expect_trace ""
+
+# Include the actual recipe in a test-owned repository: fmt-diff must never
+# discover or format the author's working tree while testing itself.
+mkdir "$fixture/repo"
+git init --template= -q "$fixture/repo"
+printf 'package fixture\n' > "$fixture/repo/first.go"
+printf 'package fixture\n' > "$fixture/repo/second.go"
+printf 'fixture\n' > "$fixture/repo/note.txt"
+git -C "$fixture/repo" -c core.excludesFile=/dev/null add -- first.go second.go note.txt
+git -C "$fixture/repo" -c core.hooksPath=/dev/null -c commit.gpgsign=false \
+    -c user.name=Fixture -c user.email=fixture@example.invalid commit -qm fixture
+cat > "$fixture/diff.mk" <<EOF
+include $root/.make/quality.mk
+.PHONY: install-format-tools
+install-format-tools:
+	@:
+EOF
+invoke_diff() {
+    scenarios=$((scenarios + 1))
+    : > "$CONTRACT_TRACE"
+    if make --no-print-directory -C "$fixture/repo" -f "$fixture/diff.mk" \
+        GOFUMPT="$fixture/formatter" GOIMPORTS="$fixture/formatter" fmt-diff \
+        > "$fixture/stdout" 2> "$fixture/stderr"; then
+        result=0
+    else
+        result=$?
+    fi
+}
+invoke_diff
+[ "$result" -eq 0 ]
+grep -Fq 'No Go files changed' "$fixture/stdout"
+expect_trace ""
+printf 'changed\n' >> "$fixture/repo/note.txt"
+invoke_diff
+[ "$result" -eq 0 ]
+grep -Fq 'No Go files changed' "$fixture/stdout"
+expect_trace ""
+printf '// changed\n' >> "$fixture/repo/first.go"
+printf '// changed\n' >> "$fixture/repo/second.go"
+invoke_diff
+[ "$result" -eq 0 ]
+expect_trace $'formatter:-w first.go\nformatter:-w -local github.com/gizzahub/gzh-cli first.go\nformatter:-w second.go\nformatter:-w -local github.com/gizzahub/gzh-cli second.go'
+for file in first.go second.go; do
+    for tool in gofumpt goimports; do
+        expected=""
+        for current in first.go second.go; do
+            expected="${expected}${expected:+$'\n'}formatter:-w $current"
+            [ "$current" != "$file" ] || [ "$tool" != gofumpt ] || break
+            expected="${expected}${expected:+$'\n'}formatter:-w -local github.com/gizzahub/gzh-cli $current"
+            [ "$current" != "$file" ] || break
+        done
+        args="-w $file"
+        [ "$tool" != goimports ] || args="-w -local github.com/gizzahub/gzh-cli $file"
+        export CONTRACT_FORMATTER_FAIL="$args"
+        invoke_diff
+        [ "$result" -ne 0 ]
+        grep -Fq 'controlled-formatter-failure:' "$fixture/stderr"
+        grep -Fq "$tool failed for $file" "$fixture/stderr"
+        expect_no_stdout 'Changed files formatted!'
+        expect_trace "$expected"
+    done
+done
+export CONTRACT_FORMATTER_FAIL=""
+# An invalid revision query is not an empty successful change set.
+invoke_diff_with_bad_head() {
+    git -C "$fixture/repo" symbolic-ref HEAD refs/heads/unborn-contract-fixture
+    invoke_diff
+}
+invoke_diff_with_bad_head
+[ "$result" -ne 0 ]
+expect_no_stdout 'No Go files changed'
+expect_no_stdout 'Changed files formatted!'
+expect_trace ""
+
+printf 'Make contract regression passed (%s scenarios).\n' "$scenarios"

@@ -110,8 +110,8 @@ format-file: install-format-tools ## format specific files with gofumpt and goim
 	@for file in $(filter-out format-file,$(MAKECMDGOALS)); do \
 		if [ -n "$$file" ]; then \
 			if [ ! -f "$$file" ]; then \
-				echo -e "$(RED)❌ Error: File '$$file' does not exist$(RESET)"; \
-				continue; \
+				echo -e "$(RED)❌ Error: File '$$file' does not exist$(RESET)" >&2; \
+				exit 1; \
 			fi; \
 			if ! echo "$$file" | grep -q "\.go$$"; then \
 				echo -e "$(YELLOW)⚠️  Warning: File '$$file' is not a Go file (.go extension), skipping$(RESET)"; \
@@ -119,9 +119,9 @@ format-file: install-format-tools ## format specific files with gofumpt and goim
 			fi; \
 			echo -e "$(CYAN)📝 Formatting file: $$file$(RESET)"; \
 			echo "  1. Running gofumpt..."; \
-			"$(GOFUMPT)" -w "$$file" || echo -e "$(RED)❌ gofumpt failed for $$file$(RESET)"; \
+			"$(GOFUMPT)" -w "$$file" || { status=$$?; echo "gofumpt failed for $$file" >&2; exit $$status; }; \
 			echo "  2. Running goimports..."; \
-			"$(GOIMPORTS)" -w $(GOIMPORTS_FLAGS) "$$file" || echo -e "$(RED)❌ goimports failed for $$file$(RESET)"; \
+			"$(GOIMPORTS)" -w $(GOIMPORTS_FLAGS) "$$file" || { status=$$?; echo "goimports failed for $$file" >&2; exit $$status; }; \
 			echo -e "$(GREEN)✅ File '$$file' formatted successfully!$(RESET)"; \
 		fi; \
 	done
@@ -129,15 +129,16 @@ format-file: install-format-tools ## format specific files with gofumpt and goim
 
 fmt-diff: install-format-tools ## format only changed files (fast, for pre-commit)
 	@echo -e "$(CYAN)🚀 Formatting changed files only...$(RESET)"
-	@CHANGED_FILES=$$(git diff --name-only --diff-filter=d HEAD | grep '\.go$$' || true); \
+	@changed_files=$$(git diff --name-only --diff-filter=d HEAD) || exit $$?; \
+	CHANGED_FILES=$$(printf '%s\n' "$$changed_files" | sed -n '/\.go$$/p') || exit $$?; \
 	if [ -n "$$CHANGED_FILES" ]; then \
-		echo "$$CHANGED_FILES" | while read file; do \
+		printf '%s\n' "$$CHANGED_FILES" | while IFS= read -r file; do \
 			if [ -f "$$file" ]; then \
 				echo -e "$(CYAN)📝 Formatting: $$file$(RESET)"; \
-				"$(GOFUMPT)" -w "$$file" || echo -e "$(RED)❌ gofumpt failed for $$file$(RESET)"; \
-				"$(GOIMPORTS)" -w $(GOIMPORTS_FLAGS) "$$file" || echo -e "$(RED)❌ goimports failed for $$file$(RESET)"; \
+				"$(GOFUMPT)" -w "$$file" || { status=$$?; echo "gofumpt failed for $$file" >&2; exit $$status; }; \
+				"$(GOIMPORTS)" -w $(GOIMPORTS_FLAGS) "$$file" || { status=$$?; echo "goimports failed for $$file" >&2; exit $$status; }; \
 			fi; \
-		done; \
+		done || exit $$?; \
 		echo -e "$(GREEN)✅ Changed files formatted!$(RESET)"; \
 	else \
 		echo -e "$(YELLOW)No Go files changed$(RESET)"; \
