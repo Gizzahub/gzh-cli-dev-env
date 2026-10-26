@@ -67,12 +67,18 @@ func readActiveProfile() (string, error) {
 // 2. state file written by Switch
 // 3. empty string.
 func resolveActiveProfile() string {
-	if profile := os.Getenv("AWS_PROFILE"); profile != "" {
-		return profile
-	}
-	profile, err := readActiveProfile()
-	if err != nil || profile == "" {
+	profile, err := resolveActiveProfileStrict()
+	if err != nil {
 		return ""
 	}
 	return profile
+}
+
+// 트랜잭션 snapshot은 상태 파일 읽기 실패와 정상적인 미설정을 구분한다.
+// status 소비자는 기존 best-effort facade를 계속 사용한다.
+func resolveActiveProfileStrict() (string, error) {
+	if profile := os.Getenv("AWS_PROFILE"); profile != "" {
+		return profile, nil
+	}
+	return readActiveProfile()
 }

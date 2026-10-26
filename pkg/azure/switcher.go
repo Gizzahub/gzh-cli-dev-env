@@ -5,6 +5,7 @@ package azure
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -51,20 +52,37 @@ func (a *Switcher) Switch(ctx context.Context, config any) error {
 
 // GetCurrentState retrieves the current Azure configuration state.
 func (a *Switcher) GetCurrentState(ctx context.Context) (any, error) {
-	// Get current Azure subscription
-	cmd := commandContext(ctx, "az", "account", "show", "--query", "id", "-o", "tsv")
-	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
-	subscriptionOutput, _ := cmd.Output()
+	return currentStateWithCommand(ctx, commandContext)
+}
 
-	// Get current Azure tenant
-	cmd = commandContext(ctx, "az", "account", "show", "--query", "tenantId", "-o", "tsv")
-	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
-	tenantOutput, _ := cmd.Output()
-
+func currentStateWithCommand(ctx context.Context, build func(context.Context, string, ...string) *exec.Cmd) (any, error) {
+	subscriptionOutput, err := stateQuery(ctx, build, "subscription", "account", "show", "--query", "id", "-o", "tsv")
+	if err != nil {
+		return nil, err
+	}
+	tenantOutput, err := stateQuery(ctx, build, "tenant", "account", "show", "--query", "tenantId", "-o", "tsv")
+	if err != nil {
+		return nil, err
+	}
 	return &environment.AzureConfig{
 		Subscription: strings.TrimSpace(string(subscriptionOutput)),
 		Tenant:       strings.TrimSpace(string(tenantOutput)),
 	}, nil
+}
+
+// 각 query 실패 시 부분 상태를 반환하지 않고 실행 오류와 취소 원인을 보존한다.
+func stateQuery(ctx context.Context, build func(context.Context, string, ...string) *exec.Cmd, query string, args ...string) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("azure %s query: %w", query, err)
+	}
+	output, err := build(ctx, "az", args...).Output()
+	if ctx.Err() != nil {
+		err = errors.Join(err, ctx.Err())
+	}
+	if err != nil {
+		return nil, fmt.Errorf("azure %s query: %w", query, err)
+	}
+	return output, nil
 }
 
 // Rollback rolls back to the previous Azure configuration.

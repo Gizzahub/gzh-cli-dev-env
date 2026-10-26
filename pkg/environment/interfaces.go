@@ -19,6 +19,8 @@ type ServiceSwitcher interface {
 
 	// GetCurrentState returns the current state of the service.
 	// This state can be used for rollback operations.
+	// Failed queries and cancellation must return an error rather than an
+	// unobserved state, so callers can stop before journaling or switching.
 	GetCurrentState(ctx context.Context) (any, error)
 
 	// Rollback restores the service to a previous state.

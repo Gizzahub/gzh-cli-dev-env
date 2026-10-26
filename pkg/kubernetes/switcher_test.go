@@ -62,6 +62,7 @@ func TestSwitcher_Switch_NilConfig(t *testing.T) {
 
 // TestSwitcher_GetCurrentState tests GetCurrentState returns valid structure.
 func TestSwitcher_GetCurrentState(t *testing.T) {
+	withCommandMap(t, map[string]cmdResponse{})
 	switcher := NewSwitcher()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -117,6 +118,7 @@ func TestSwitcher_Switch_EmptyContext(t *testing.T) {
 
 // TestSwitcher_Switch_ValidConfig tests Switch with valid config structure.
 func TestSwitcher_Switch_ValidConfig(t *testing.T) {
+	withCommandMap(t, map[string]cmdResponse{})
 	switcher := NewSwitcher()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -135,6 +137,7 @@ func TestSwitcher_Switch_ValidConfig(t *testing.T) {
 
 // TestSwitcher_Rollback_WithValidState tests Rollback with valid state.
 func TestSwitcher_Rollback_WithValidState(t *testing.T) {
+	withCommandMap(t, map[string]cmdResponse{})
 	switcher := NewSwitcher()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -154,6 +157,7 @@ func TestSwitcher_Rollback_WithValidState(t *testing.T) {
 
 // TestSwitcher_GetCurrentState_ReturnsKubernetesConfig tests return type.
 func TestSwitcher_GetCurrentState_ReturnsKubernetesConfig(t *testing.T) {
+	withCommandMap(t, map[string]cmdResponse{})
 	switcher := NewSwitcher()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

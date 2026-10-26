@@ -5,6 +5,7 @@ package kubernetes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -59,18 +60,37 @@ func (k *Switcher) Switch(ctx context.Context, config any) error {
 
 // GetCurrentState retrieves the current Kubernetes configuration state.
 func (k *Switcher) GetCurrentState(ctx context.Context) (any, error) {
-	// Get current Kubernetes context
-	cmd := commandContext(ctx, "kubectl", "config", "current-context")
-	contextOutput, _ := cmd.Output() //nolint:errcheck // Error ignored; empty string used on failure
+	return currentStateWithCommand(ctx, commandContext)
+}
 
-	// Get current namespace
-	cmd = commandContext(ctx, "kubectl", "config", "view", "--minify", "--output", "jsonpath={..namespace}")
-	namespaceOutput, _ := cmd.Output() //nolint:errcheck // Error ignored; empty string used on failure
-
+func currentStateWithCommand(ctx context.Context, build func(context.Context, string, ...string) *exec.Cmd) (any, error) {
+	contextOutput, err := stateQuery(ctx, build, "context", "config", "current-context")
+	if err != nil {
+		return nil, err
+	}
+	namespaceOutput, err := stateQuery(ctx, build, "namespace", "config", "view", "--minify", "--output", "jsonpath={..namespace}")
+	if err != nil {
+		return nil, err
+	}
 	return &environment.KubernetesConfig{
 		Context:   strings.TrimSpace(string(contextOutput)),
 		Namespace: strings.TrimSpace(string(namespaceOutput)),
 	}, nil
+}
+
+// 각 query 실패 시 부분 상태를 반환하지 않고 실행 오류와 취소 원인을 보존한다.
+func stateQuery(ctx context.Context, build func(context.Context, string, ...string) *exec.Cmd, query string, args ...string) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("kubernetes %s query: %w", query, err)
+	}
+	output, err := build(ctx, "kubectl", args...).Output()
+	if ctx.Err() != nil {
+		err = errors.Join(err, ctx.Err())
+	}
+	if err != nil {
+		return nil, fmt.Errorf("kubernetes %s query: %w", query, err)
+	}
+	return output, nil
 }
 
 // Rollback rolls back to the previous Kubernetes configuration.

@@ -5,6 +5,7 @@ package aws
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -70,20 +71,48 @@ func (a *Switcher) Switch(ctx context.Context, config any) error {
 // GetCurrentState retrieves the current AWS configuration state.
 // Profile resolution order: AWS_PROFILE env → state file → empty.
 func (a *Switcher) GetCurrentState(ctx context.Context) (any, error) {
-	profile := resolveActiveProfile()
+	return a.getCurrentState(ctx, runSnapshotCommand)
+}
 
+// snapshotCommand는 호출별 실행 경계이며 새 전역 가변 hook을 만들지 않는다.
+type snapshotCommand func(context.Context, string, ...string) ([]byte, error)
+
+func (a *Switcher) getCurrentState(ctx context.Context, run snapshotCommand) (any, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("aws state snapshot: %w", err)
+	}
+	profile, err := resolveActiveProfileStrict()
+	if err != nil {
+		return nil, fmt.Errorf("aws profile state: %w", err)
+	}
 	args := []string{"configure", "get", "region"}
 	if profile != "" {
 		args = append(args, "--profile", profile)
 	}
-	cmd := commandContext(ctx, "aws", args...)
-	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
-	regionOutput, _ := cmd.Output()
+	region, err := snapshotValue(ctx, run, "region", args...)
+	if err != nil {
+		return nil, err
+	}
+	return &environment.AWSConfig{Profile: profile, Region: region}, nil
+}
 
-	return &environment.AWSConfig{
-		Profile: profile,
-		Region:  strings.TrimSpace(string(regionOutput)),
-	}, nil
+func runSnapshotCommand(ctx context.Context, _ string, args ...string) ([]byte, error) {
+	cmd := commandContext(ctx, "aws", args...)
+	return cmd.Output()
+}
+
+func snapshotValue(ctx context.Context, run snapshotCommand, query string, args ...string) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", fmt.Errorf("aws %s state query: %w", query, err)
+	}
+	output, err := run(ctx, "aws", args...)
+	if ctx.Err() != nil {
+		err = errors.Join(err, ctx.Err())
+	}
+	if err != nil {
+		return "", fmt.Errorf("aws %s state query: %w", query, err)
+	}
+	return strings.TrimSpace(string(output)), nil
 }
 
 // Rollback rolls back to the previous AWS configuration.

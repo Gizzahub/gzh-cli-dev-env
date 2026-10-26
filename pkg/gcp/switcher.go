@@ -5,6 +5,7 @@ package gcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -61,26 +62,48 @@ func (g *Switcher) Switch(ctx context.Context, config any) error {
 
 // GetCurrentState retrieves the current GCP configuration state.
 func (g *Switcher) GetCurrentState(ctx context.Context) (any, error) {
-	// Get current GCP project
-	cmd := exec.CommandContext(ctx, "gcloud", "config", "get-value", "project")
-	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
-	projectOutput, _ := cmd.Output()
+	return g.getCurrentState(ctx, runSnapshotCommand)
+}
 
-	// Get current GCP account
-	cmd = exec.CommandContext(ctx, "gcloud", "config", "get-value", "account")
-	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
-	accountOutput, _ := cmd.Output()
+// snapshotCommand는 호출별 실행 경계이며 새 전역 가변 hook을 만들지 않는다.
+type snapshotCommand func(context.Context, string, ...string) ([]byte, error)
 
-	// Get current GCP region
-	cmd = exec.CommandContext(ctx, "gcloud", "config", "get-value", "compute/region")
-	//nolint:errcheck // best-effort probe; empty string acceptable if unavailable
-	regionOutput, _ := cmd.Output()
+func (g *Switcher) getCurrentState(ctx context.Context, run snapshotCommand) (any, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("gcp state snapshot: %w", err)
+	}
+	project, err := snapshotValue(ctx, run, "project", "config", "get-value", "project")
+	if err != nil {
+		return nil, err
+	}
+	account, err := snapshotValue(ctx, run, "account", "config", "get-value", "account")
+	if err != nil {
+		return nil, err
+	}
+	region, err := snapshotValue(ctx, run, "region", "config", "get-value", "compute/region")
+	if err != nil {
+		return nil, err
+	}
+	return &environment.GCPConfig{Project: project, Account: account, Region: region}, nil
+}
 
-	return &environment.GCPConfig{
-		Project: strings.TrimSpace(string(projectOutput)),
-		Account: strings.TrimSpace(string(accountOutput)),
-		Region:  strings.TrimSpace(string(regionOutput)),
-	}, nil
+func runSnapshotCommand(ctx context.Context, _ string, args ...string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, "gcloud", args...)
+	return cmd.Output()
+}
+
+func snapshotValue(ctx context.Context, run snapshotCommand, query string, args ...string) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", fmt.Errorf("gcp %s state query: %w", query, err)
+	}
+	output, err := run(ctx, "gcloud", args...)
+	if ctx.Err() != nil {
+		err = errors.Join(err, ctx.Err())
+	}
+	if err != nil {
+		return "", fmt.Errorf("gcp %s state query: %w", query, err)
+	}
+	return strings.TrimSpace(string(output)), nil
 }
 
 // Rollback rolls back to the previous GCP configuration.

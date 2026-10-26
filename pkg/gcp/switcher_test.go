@@ -68,7 +68,7 @@ func TestSwitcher_GetCurrentState(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	state, err := switcher.GetCurrentState(ctx)
+	state, err := switcher.getCurrentState(ctx, successfulSnapshotOutput)
 	if err != nil {
 		t.Fatalf("GetCurrentState() error = %v", err)
 	}
@@ -148,7 +148,7 @@ func TestSwitcher_Rollback_WithValidState(t *testing.T) {
 	defer cancel()
 
 	// Get current state first
-	state, err := switcher.GetCurrentState(ctx)
+	state, err := switcher.getCurrentState(ctx, successfulSnapshotOutput)
 	if err != nil {
 		t.Fatalf("GetCurrentState() error = %v", err)
 	}
@@ -166,7 +166,7 @@ func TestSwitcher_GetCurrentState_ReturnsGCPConfig(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	state, err := switcher.GetCurrentState(ctx)
+	state, err := switcher.getCurrentState(ctx, successfulSnapshotOutput)
 	if err != nil {
 		t.Fatalf("GetCurrentState() error = %v", err)
 	}
