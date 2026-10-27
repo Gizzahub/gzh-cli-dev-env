@@ -134,8 +134,8 @@ func (es *EnvironmentSwitcher) SwitchEnvironment(ctx context.Context, env *Envir
 		})
 	}
 
-	// Successful completion: remove crash-recovery journal.
-	if journalPath != "" {
+	// 실제 전환이 끝난 경우만 정리하고, dry-run은 기존 복구 journal을 보존한다.
+	if !options.DryRun && journalPath != "" {
 		if err := ClearJournal(journalPath); err != nil {
 			result.Errors = append(result.Errors, SwitchError{
 				Service: "journal",
