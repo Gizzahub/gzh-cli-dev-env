@@ -34,6 +34,18 @@ Region 쓰기는 명시 profile과 config 경로를 사용하는 AWS CLI를 통�
 삭제하지 않고 불완전 복원 오류를 남긴다. 전체 config 파일의 byte-identical 복원이나
 서로 다른 프로세스 사이의 원자적 CAS를 보장하지 않는다.
 
+mode는 Go가 해당 플랫폼에서 관측하는 파일 mode다. 새 선택 파일은 계속 `0600`을 요청해
+생성한다. POSIX에서는 예상 mode도 `0600`이지만, Windows의 Go 파일 정보는 쓰기 가능한
+일반 파일을 `0666`, readonly 파일을 `0444`로 표현한다. Windows의 `Chmod`는 Unix 권한이나
+ACL을 구현하지 않는다. 이 복구 상태는 Windows ACL/security descriptor 복원을 보장하지 않는다.
+
+기존 v0.2.0 journal에서 선택 파일이 원래 부재이고, nonempty Profile 요청과 경로·존재·원문이
+정확히 일치하며 예상 mode만 `0600`인 경우에는 Windows에서 그 쓰기 의도를 관측 mode
+`0666`으로 해석한다. 기존 원문의 before mode나 현재 파일을 일괄 정규화하지 않고, readonly
+변경·다른 mode·원문·경로 변경은 계속 거절한다. 저장된 journal은 임의 rewrite하지 않는다.
+이것은 생성 OS를 인증하는 기능이 아니며 플랫폼별 Go 쓰기 의미의 좁은 호환 처리다.
+새 Windows 예상 mode를 포함한 journal은 기존 v0.2.0 reader에서 검증 오류로 거절될 수 있다.
+
 모호한 INI 형식·중복 key/section·비일반 파일은 추측하지 않고 오류로 반환한다.
 외부 writer와의 검사-쓰기 사이 경쟁은 남아 있으며 임의 파일시스템 경로에 대한
 완전한 격리 보장이 아니다.

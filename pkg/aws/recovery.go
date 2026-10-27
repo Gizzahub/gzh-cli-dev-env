@@ -54,7 +54,7 @@ func (a *Switcher) CaptureState(ctx context.Context, value any) (any, error) {
 	}
 	if request.Profile != "" {
 		profile = request.Profile
-		state.ProfileExpected = environment.AWSProfileFileState{Path: path, Present: true, Raw: request.Profile + "\n", Mode: 0o600}
+		state.ProfileExpected = environment.AWSProfileFileState{Path: path, Present: true, Raw: request.Profile + "\n", Mode: newProfileExpectedMode()}
 		if before.Present {
 			state.ProfileExpected.Mode = before.Mode
 		}
@@ -222,10 +222,10 @@ func validateProfileRecovery(state *environment.AWSRecoveryState) error {
 		expected.Present = true
 		expected.Raw = request.Profile + "\n"
 		if !state.ProfileBefore.Present {
-			expected.Mode = 0o600
+			expected.Mode = newProfileExpectedMode()
 		}
 	}
-	if expected != state.ProfileExpected {
+	if expected != effectiveProfileExpected(state) {
 		return fmt.Errorf("invalid expected AWS profile state")
 	}
 	if state.ProfileBefore.Mode > 0o777 || state.ProfileExpected.Mode > 0o777 {
@@ -326,7 +326,7 @@ func checkRecoveryProfile(state *environment.AWSRecoveryState) (environment.AWSP
 		if err != nil {
 			return current, err
 		}
-		if !sameProfile(current, state.ProfileBefore) && !sameProfile(current, state.ProfileExpected) {
+		if !sameProfile(current, state.ProfileBefore) && !sameProfile(current, effectiveProfileExpected(state)) {
 			return current, fmt.Errorf("AWS profile recovery conflict")
 		}
 	}

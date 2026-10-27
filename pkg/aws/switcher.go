@@ -86,7 +86,7 @@ func (a *Switcher) ApplyState(ctx context.Context, value any) error {
 		}
 	}
 	if state.Request.Profile != "" {
-		if err := replaceRegular(ctx, state.ProfileBefore.Path, []byte(state.ProfileExpected.Raw), os.FileMode(state.ProfileExpected.Mode)); err != nil {
+		if err := replaceRegular(ctx, state.ProfileBefore.Path, []byte(state.ProfileExpected.Raw), profileApplyPermissions(state)); err != nil {
 			return fmt.Errorf("failed to set AWS profile: %w", err)
 		}
 	}
