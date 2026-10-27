@@ -35,7 +35,7 @@ func (k *Switcher) Name() string {
 // Switch switches to the specified Kubernetes configuration.
 func (k *Switcher) Switch(ctx context.Context, config any) error {
 	kubernetesConfig, ok := config.(*environment.KubernetesConfig)
-	if !ok {
+	if !ok || kubernetesConfig == nil {
 		return fmt.Errorf("invalid Kubernetes configuration type")
 	}
 

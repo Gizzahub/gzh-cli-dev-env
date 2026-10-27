@@ -29,7 +29,7 @@ func (d *Switcher) Name() string {
 // Switch switches to the specified Docker configuration.
 func (d *Switcher) Switch(ctx context.Context, config any) error {
 	dockerConfig, ok := config.(*environment.DockerConfig)
-	if !ok {
+	if !ok || dockerConfig == nil {
 		return fmt.Errorf("invalid Docker configuration type")
 	}
 

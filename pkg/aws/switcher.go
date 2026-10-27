@@ -40,7 +40,7 @@ func (a *Switcher) Name() string {
 // a profile is provided.
 func (a *Switcher) Switch(ctx context.Context, config any) error {
 	awsConfig, ok := config.(*environment.AWSConfig)
-	if !ok {
+	if !ok || awsConfig == nil {
 		return fmt.Errorf("invalid AWS configuration type")
 	}
 
@@ -48,6 +48,9 @@ func (a *Switcher) Switch(ctx context.Context, config any) error {
 	// Do NOT use `aws configure set profile` — that only writes a key into the
 	// default profile block and does not change which profile is active.
 	if awsConfig.Profile != "" {
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("failed to set AWS profile: %w", err)
+		}
 		if err := writeActiveProfile(awsConfig.Profile); err != nil {
 			return fmt.Errorf("failed to set AWS profile: %w", err)
 		}

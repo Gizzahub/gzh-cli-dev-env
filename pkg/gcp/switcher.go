@@ -29,7 +29,7 @@ func (g *Switcher) Name() string {
 // Switch switches to the specified GCP configuration.
 func (g *Switcher) Switch(ctx context.Context, config any) error {
 	gcpConfig, ok := config.(*environment.GCPConfig)
-	if !ok {
+	if !ok || gcpConfig == nil {
 		return fmt.Errorf("invalid GCP configuration type")
 	}
 

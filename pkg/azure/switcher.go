@@ -35,7 +35,7 @@ func (a *Switcher) Name() string {
 // Switch switches to the specified Azure configuration.
 func (a *Switcher) Switch(ctx context.Context, config any) error {
 	azureConfig, ok := config.(*environment.AzureConfig)
-	if !ok {
+	if !ok || azureConfig == nil {
 		return fmt.Errorf("invalid Azure configuration type")
 	}
 
