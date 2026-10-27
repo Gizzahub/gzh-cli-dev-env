@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -87,6 +86,15 @@ func wiringAWSFixture(t *testing.T, fail bool) func() {
 	t.Setenv("GZH_WIRING_AWS_FAIL", "0")
 	if fail {
 		t.Setenv("GZH_WIRING_AWS_FAIL", "1")
+		// Target capture reads the config resource directly; a directory must
+		// fail before journal publication or vendor execution.
+		config := os.Getenv("AWS_CONFIG_FILE")
+		if err := os.Remove(config); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Mkdir(config, 0o700); err != nil {
+			t.Fatal(err)
+		}
 	}
 	// 자식 race runtime 종료 지연을 없애며 검사 자체나 생산 timeout은 변경하지 않는다.
 	t.Setenv("GORACE", "atexit_sleep_ms=0")
@@ -95,12 +103,8 @@ func wiringAWSFixture(t *testing.T, fail bool) func() {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var args []string
-		if err := json.Unmarshal(data, &args); err != nil {
-			t.Fatalf("expected exactly one query record: %v", err)
-		}
-		if !reflect.DeepEqual(args, []string{"configure", "get", "region"}) {
-			t.Fatalf("unexpected AWS calls: %v", args)
+		if len(data) != 0 {
+			t.Fatalf("target capture/dry-run must not execute AWS: %s", data)
 		}
 	}
 }
@@ -126,14 +130,14 @@ func TestDefaultWiringSnapshotFailureStopsDryRun(t *testing.T) {
 	registerDefaultSwitchers(switcher)
 	env := &environment.Environment{Name: "fixture", Services: map[string]environment.ServiceConfig{"aws": {AWS: &environment.AWSConfig{Profile: "target", Region: "target-region"}}}}
 	result, err := switcher.SwitchEnvironment(context.Background(), env, environment.SwitchOptions{DryRun: true, Timeout: 5 * time.Second})
-	var exitErr *exec.ExitError
-	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 23 {
-		t.Fatalf("expected preserved fixture exit23, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "non-regular AWS state file") {
+		t.Fatalf("expected target capture refusal, got %v", err)
 	}
 	if result == nil || result.Success {
 		t.Fatalf("failed snapshot must not report success: %+v", result)
 	}
 	assertQuery()
+	assertNoWiringJournal(t)
 }
 
 func TestSwitchAllWiringSnapshotFailureIsVisible(t *testing.T) {
@@ -146,12 +150,23 @@ func TestSwitchAllWiringSnapshotFailureIsVisible(t *testing.T) {
 	opts := &switchAllOptions{fromFile: path, dryRun: true, force: true, timeout: 5 * time.Second}
 	var runErr error
 	output := captureStdout(t, func() { runErr = opts.run(context.Background()) })
-	var exitErr *exec.ExitError
-	if !errors.As(runErr, &exitErr) || exitErr.ExitCode() != 23 {
-		t.Fatalf("expected preserved fixture exit23, got %v", runErr)
+	if runErr == nil || !strings.Contains(runErr.Error(), "non-regular AWS state file") {
+		t.Fatalf("expected target capture refusal, got %v", runErr)
 	}
 	if strings.Contains(output, "Successfully switched") {
 		t.Fatalf("failure reported success: %q", output)
 	}
 	assertQuery()
+	assertNoWiringJournal(t)
+}
+
+func assertNoWiringJournal(t *testing.T) {
+	t.Helper()
+	path, err := environment.DefaultJournalPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("failed target capture must not publish a journal: %v", err)
+	}
 }

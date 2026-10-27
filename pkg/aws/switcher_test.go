@@ -68,6 +68,9 @@ func TestSwitcher_Switch_NilConfig(t *testing.T) {
 func withTempConfigDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
+	t.Setenv("AWS_CONFIG_FILE", filepath.Join(dir, "aws-config"))
+	t.Setenv("AWS_REGION", "")
+	t.Setenv("AWS_DEFAULT_REGION", "")
 	orig := userConfigDir
 	userConfigDir = func() (string, error) { return dir, nil }
 	t.Cleanup(func() { userConfigDir = orig })

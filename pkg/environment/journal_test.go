@@ -248,7 +248,7 @@ func TestDetectStaleJournal(t *testing.T) {
 		// Fresh journal for recovery path.
 		_ = os.Remove(path)
 		states := map[string]any{
-			"aws": &AWSConfig{Profile: "recover-me", Region: "ap-northeast-1"},
+			"docker": &DockerConfig{Context: "recover-me"},
 		}
 		if err := WriteJournal(path, false, "crash-env", states); err != nil {
 			t.Fatalf("WriteJournal: %v", err)
@@ -256,16 +256,16 @@ func TestDetectStaleJournal(t *testing.T) {
 
 		rollbackCalled := false
 		mock := &recoverMockSwitcher{
-			name: "aws",
+			name: "docker",
 			onRollback: func(state any) error {
 				rollbackCalled = true
-				cfg, ok := state.(*AWSConfig)
+				cfg, ok := state.(*DockerConfig)
 				if !ok {
-					t.Errorf("rollback state type = %T, want *AWSConfig", state)
+					t.Errorf("rollback state type = %T, want *DockerConfig", state)
 					return nil
 				}
-				if cfg.Profile != "recover-me" {
-					t.Errorf("Profile = %q, want recover-me", cfg.Profile)
+				if cfg.Context != "recover-me" {
+					t.Errorf("Context = %q, want recover-me", cfg.Context)
 				}
 				return nil
 			},

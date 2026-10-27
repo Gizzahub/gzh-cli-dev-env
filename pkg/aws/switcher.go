@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -39,35 +40,67 @@ func (a *Switcher) Name() string {
 // Region is written with `aws configure set region` scoped to --profile when
 // a profile is provided.
 func (a *Switcher) Switch(ctx context.Context, config any) error {
-	awsConfig, ok := config.(*environment.AWSConfig)
-	if !ok || awsConfig == nil {
-		return fmt.Errorf("invalid AWS configuration type")
+	state, err := a.CaptureState(ctx, config)
+	if err != nil {
+		return err
 	}
+	return a.ApplyState(ctx, state)
+}
 
-	// Persist active profile. This is the real activation signal for this tool.
-	// Do NOT use `aws configure set profile` — that only writes a key into the
-	// default profile block and does not change which profile is active.
-	if awsConfig.Profile != "" {
+// ApplyState 는 journal에 기록한 동일한 계획만 적용하고 변경된 자원은 거절한다.
+func (a *Switcher) ApplyState(ctx context.Context, value any) error {
+	if err := a.ValidateRecoveryState(value); err != nil {
+		return err
+	}
+	state, ok := value.(*environment.AWSRecoveryState)
+	if !ok {
+		return fmt.Errorf("invalid AWS recovery state type")
+	}
+	if _, err := validatedRequest(&state.Request); err != nil {
+		return err
+	}
+	if state.Request.Profile == "" && state.Request.Region == "" {
+		return nil
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	current, err := readProfileFile(state.ProfileBefore.Path)
+	if err != nil {
+		return err
+	}
+	if current != state.ProfileBefore {
+		return fmt.Errorf("AWS profile changed before switch")
+	}
+	if state.Request.Region != "" {
+		data, exists, mode, err := readRegular(state.ConfigPath)
+		if err != nil {
+			return err
+		}
+		region, err := readRegion(data, state.TargetProfile)
+		if err != nil {
+			return err
+		}
+		if region != state.RegionBefore || exists != state.ConfigExisted || uint32(mode.Perm()) != state.ConfigMode {
+			return fmt.Errorf("AWS region changed before switch")
+		}
+	}
+	if state.Request.Profile != "" {
+		if err := replaceRegular(ctx, state.ProfileBefore.Path, []byte(state.ProfileExpected.Raw), os.FileMode(state.ProfileExpected.Mode)); err != nil {
+			return fmt.Errorf("failed to set AWS profile: %w", err)
+		}
+	}
+	if state.Request.Region != "" {
 		if err := ctx.Err(); err != nil {
-			return fmt.Errorf("failed to set AWS profile: %w", err)
+			return err
 		}
-		if err := writeActiveProfile(awsConfig.Profile); err != nil {
-			return fmt.Errorf("failed to set AWS profile: %w", err)
-		}
-	}
-
-	// Set region on the target profile (or default when profile is empty).
-	if awsConfig.Region != "" {
-		args := []string{awsCLIConfigure, "set", awsCLIRegion, awsConfig.Region}
-		if awsConfig.Profile != "" {
-			args = append(args, "--profile", awsConfig.Profile)
-		}
+		args := []string{awsCLIConfigure, "set", awsCLIRegion, state.Request.Region, "--profile", state.TargetProfile}
 		cmd := commandContext(ctx, "aws", args...)
+		cmd.Env = append(os.Environ(), "AWS_CONFIG_FILE="+state.ConfigPath)
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to set AWS region: %w", err)
+			return fmt.Errorf("failed to set AWS region: %w", errors.Join(err, ctx.Err()))
 		}
 	}
-
 	return nil
 }
 
@@ -88,7 +121,7 @@ func (a *Switcher) getCurrentState(ctx context.Context, run snapshotCommand) (an
 	if err != nil {
 		return nil, fmt.Errorf("aws profile state: %w", err)
 	}
-	args := []string{"configure", "get", "region"}
+	args := []string{"configure", "get", awsCLIRegion}
 	if profile != "" {
 		args = append(args, "--profile", profile)
 	}
@@ -120,5 +153,8 @@ func snapshotValue(ctx context.Context, run snapshotCommand, query string, args 
 
 // Rollback rolls back to the previous AWS configuration.
 func (a *Switcher) Rollback(ctx context.Context, previousState any) error {
+	if state, ok := previousState.(*environment.AWSRecoveryState); ok {
+		return a.restoreRecovery(ctx, state)
+	}
 	return a.Switch(ctx, previousState)
 }

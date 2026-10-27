@@ -77,6 +77,9 @@ func WriteJournal(path string, dryRun bool, envName string, previousStates map[s
 			return fmt.Errorf("serialize state for %s: %w", name, err)
 		}
 		journal.Services[name] = entry
+		if entry.Type == awsRecoveryType {
+			journal.Version = 2
+		}
 	}
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -168,21 +171,38 @@ func (es *EnvironmentSwitcher) RecoverFromJournal(ctx context.Context, path stri
 		return fmt.Errorf("no rollback journal found at %s", path)
 	}
 
-	var errs []string
+	// Decode and validate the complete journal before any Rollback call. Map
+	// iteration order must never decide whether malformed metadata causes writes.
+	states := make(map[string]any, len(journal.Services))
+	switchers := make(map[string]ServiceSwitcher, len(journal.Services))
 	for serviceName, entry := range journal.Services {
 		es.mu.RLock()
 		switcher, exists := es.serviceSwitchers[serviceName]
 		es.mu.RUnlock()
 		if !exists {
-			errs = append(errs, fmt.Sprintf("no switcher for %s", serviceName))
-			continue
+			return fmt.Errorf("journal preflight: no switcher for %s", serviceName)
+		}
+		if err := validateRecoveryEntry(journal.Version, serviceName, entry); err != nil {
+			return fmt.Errorf("journal preflight %s: %w", serviceName, err)
 		}
 		state, err := deserializeState(entry)
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("%s: deserialize: %v", serviceName, err))
-			continue
+			return fmt.Errorf("journal preflight %s: deserialize: %w", serviceName, err)
 		}
-		if err := switcher.Rollback(ctx, state); err != nil {
+		validator, validates := switcher.(RecoveryValidator)
+		if entry.Type == awsRecoveryType && !validates {
+			return fmt.Errorf("journal preflight %s: switcher lacks target recovery validation", serviceName)
+		}
+		if validates {
+			if err := validator.ValidateRecoveryState(state); err != nil {
+				return fmt.Errorf("journal preflight %s: %w", serviceName, err)
+			}
+		}
+		states[serviceName], switchers[serviceName] = state, switcher
+	}
+	var errs []string
+	for serviceName, state := range states {
+		if err := switchers[serviceName].Rollback(ctx, state); err != nil {
 			errs = append(errs, fmt.Sprintf("%s: %v", serviceName, err))
 		}
 	}

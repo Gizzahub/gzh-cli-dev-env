@@ -22,9 +22,10 @@ import (
 
 type (
 	checkerResponse struct {
-		Output string
-		Exit   int
-		Wait   bool
+		Output         string
+		Exit           int
+		Wait           bool
+		ConfigContents *string
 	}
 	checkerInvocation struct {
 		Name string
@@ -68,6 +69,11 @@ func runCheckerFixture(name string) int {
 			}
 		} else {
 			time.Sleep(30 * time.Second)
+		}
+	}
+	if response.ConfigContents != nil {
+		if err := os.WriteFile(os.Getenv("AWS_CONFIG_FILE"), []byte(*response.ConfigContents), 0o600); err != nil {
+			return 92
 		}
 	}
 	if response.Exit != 0 {

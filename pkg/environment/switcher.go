@@ -165,31 +165,9 @@ func (es *EnvironmentSwitcher) switchSingleService(ctx context.Context, env *Env
 		return fmt.Errorf("service configuration not found: %s", serviceName)
 	}
 
-	currentState, err := switcher.GetCurrentState(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get current state for %s: %w", serviceName, err)
-	}
-
-	es.stateMu.Lock()
-	previousStates[serviceName] = currentState
-	// Snapshot under lock so parallel writers see a consistent map for the journal.
-	statesSnapshot := make(map[string]any, len(previousStates))
-	for k, v := range previousStates {
-		statesSnapshot[k] = v
-	}
-	es.stateMu.Unlock()
-
-	// Persist previous states before Switch so a crash mid-switch leaves a recovery artifact.
-	// WriteJournal owns the dry-run guard (no file on DryRun).
-	if journalPath != "" {
-		if err := WriteJournal(journalPath, options.DryRun, env.Name, statesSnapshot); err != nil {
-			return fmt.Errorf("failed to persist rollback journal for %s: %w", serviceName, err)
-		}
-	}
-
 	var config any
 	switch serviceName {
-	case "aws":
+	case awsServiceName:
 		config = serviceConfig.AWS
 	case "gcp":
 		config = serviceConfig.GCP
@@ -209,18 +187,41 @@ func (es *EnvironmentSwitcher) switchSingleService(ctx context.Context, env *Env
 		return fmt.Errorf("no configuration provided for service: %s", serviceName)
 	}
 
+	var currentState any
+	var err error
+	if capturer, ok := switcher.(StateCapturer); ok {
+		currentState, err = capturer.CaptureState(ctx, config)
+	} else {
+		currentState, err = switcher.GetCurrentState(ctx)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to get current state for %s: %w", serviceName, err)
+	}
+	if _, ok := switcher.(StateCapturer); ok && journalPath == "" && !options.DryRun {
+		return fmt.Errorf("cannot persist target-aware rollback state for %s: journal path unavailable", serviceName)
+	}
+	if err := es.persistPreviousState(serviceName, currentState, previousStates, options, env.Name, journalPath); err != nil {
+		return err
+	}
+
 	if !options.DryRun {
-		if err := switcher.Switch(ctx, config); err != nil {
+		var switchErr error
+		if applier, ok := switcher.(StateApplier); ok {
+			switchErr = applier.ApplyState(ctx, currentState)
+		} else {
+			switchErr = switcher.Switch(ctx, config)
+		}
+		if switchErr != nil {
 			es.stateMu.Lock()
 			result.FailedServices = append(result.FailedServices, serviceName)
 			result.Errors = append(result.Errors, SwitchError{
 				Service: serviceName,
-				Error:   err.Error(),
+				Error:   switchErr.Error(),
 				Time:    time.Now(),
 			})
 			es.stateMu.Unlock()
 
-			return fmt.Errorf("failed to switch %s: %w", serviceName, err)
+			return fmt.Errorf("failed to switch %s: %w", serviceName, switchErr)
 		}
 	}
 
@@ -228,6 +229,21 @@ func (es *EnvironmentSwitcher) switchSingleService(ctx context.Context, env *Env
 	result.SwitchedServices = append(result.SwitchedServices, serviceName)
 	es.stateMu.Unlock()
 
+	return nil
+}
+
+// Serialize publication as well as map access: a delayed parallel writer must
+// not overwrite the journal with a snapshot missing a newer service entry.
+func (es *EnvironmentSwitcher) persistPreviousState(name string, state any, states map[string]any, options SwitchOptions, envName, path string) error {
+	es.stateMu.Lock()
+	defer es.stateMu.Unlock()
+	states[name] = state
+	if path != "" {
+		if err := WriteJournal(path, options.DryRun, envName, states); err != nil {
+			delete(states, name)
+			return fmt.Errorf("failed to persist rollback journal for %s: %w", name, err)
+		}
+	}
 	return nil
 }
 

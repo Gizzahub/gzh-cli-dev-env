@@ -26,3 +26,22 @@ type ServiceSwitcher interface {
 	// Rollback restores the service to a previous state.
 	Rollback(ctx context.Context, previousState any) error
 }
+
+// StateCapturer optionally captures the actual targets of a pending request.
+// CaptureState must not mutate resources. Errors stop this service before its
+// journal entry or Switch; hooks and previously completed services are separate.
+type StateCapturer interface {
+	CaptureState(ctx context.Context, config any) (any, error)
+}
+
+// StateApplier applies the same captured plan that was persisted to the journal,
+// without resolving a new target between capture and mutation.
+type StateApplier interface {
+	ApplyState(ctx context.Context, state any) error
+}
+
+// RecoveryValidator checks decoded recovery metadata before any service is
+// restored. This makes a mixed journal fail closed on unsupported snapshots.
+type RecoveryValidator interface {
+	ValidateRecoveryState(state any) error
+}

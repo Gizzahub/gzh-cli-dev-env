@@ -21,10 +21,14 @@ var secretFieldHints = []string{
 // Opaque values store the type name plus JSON of non-secret exported fields.
 func serializeState(state any) (JournalEntry, error) {
 	if state == nil {
-		return JournalEntry{Type: "nil", Data: json.RawMessage("null")}, nil
+		return JournalEntry{Type: nilRecoveryType, Data: json.RawMessage("null")}, nil
 	}
 
 	switch v := state.(type) {
+	case *AWSRecoveryState:
+		return marshalTyped(awsRecoveryType, v)
+	case AWSRecoveryState:
+		return marshalTyped(awsRecoveryType, v)
 	case *AWSConfig:
 		return marshalTyped("AWSConfig", v)
 	case AWSConfig:
@@ -151,6 +155,15 @@ func isSecretName(name string) bool {
 // deserializeState rebuilds a previous-state value from a journal entry.
 func deserializeState(entry JournalEntry) (any, error) {
 	switch entry.Type {
+	case awsRecoveryType:
+		if err := requireAWSRecoveryFields(entry.Data); err != nil {
+			return nil, err
+		}
+		var v AWSRecoveryState
+		if err := json.Unmarshal(entry.Data, &v); err != nil {
+			return nil, err
+		}
+		return &v, nil
 	case "AWSConfig":
 		var v AWSConfig
 		if err := json.Unmarshal(entry.Data, &v); err != nil {
@@ -187,7 +200,7 @@ func deserializeState(entry JournalEntry) (any, error) {
 			return nil, err
 		}
 		return &v, nil
-	case "nil":
+	case nilRecoveryType:
 		return nil, nil //nolint:nilnil // serialized nil state
 	default:
 		var v any
