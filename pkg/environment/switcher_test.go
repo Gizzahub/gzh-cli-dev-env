@@ -514,17 +514,19 @@ func TestEnvironmentSwitcher_SwitchEnvironment_DryRun(t *testing.T) {
 
 // TestEnvironmentSwitcher_SwitchEnvironment_DryRunHooks tests that dry run mode does
 // not execute pre/post hooks. Each hook creates a marker file, so the marker's
-// presence is direct proof the hook's shell command ran.
+// presence is direct proof the hook's direct-exec command ran.
 func TestEnvironmentSwitcher_SwitchEnvironment_DryRunHooks(t *testing.T) {
-	// newHookEnv builds an environment whose hooks touch marker files under dir.
-	newHookEnv := func(dir string) *Environment {
+	// 고정 native helper로 marker를 써서 dry-run과 실제 실행을 같은 입력으로 대조한다.
+	newHookEnv := func(t *testing.T, dir string) *Environment {
+		t.Helper()
+		helper := nativeHookFixture(t, dir)
 		return &Environment{
 			Name: "test-env",
 			Services: map[string]ServiceConfig{
 				"aws": {AWS: &AWSConfig{Profile: "test"}},
 			},
-			PreHooks:  []Hook{{Command: "touch " + filepath.Join(dir, "pre-hook-ran")}},
-			PostHooks: []Hook{{Command: "touch " + filepath.Join(dir, "post-hook-ran")}},
+			PreHooks:  []Hook{{Command: helper + " pre-hook-ran"}},
+			PostHooks: []Hook{{Command: helper + " post-hook-ran"}},
 		}
 	}
 
@@ -535,12 +537,13 @@ func TestEnvironmentSwitcher_SwitchEnvironment_DryRunHooks(t *testing.T) {
 	}
 
 	t.Run("dry_run_skips_hooks", func(t *testing.T) {
+		withTempConfigDir(t)
 		dir := t.TempDir()
 		es := NewEnvironmentSwitcher()
 		es.Register(newMockSwitcher("aws"))
 
 		ctx := context.Background()
-		result, err := es.SwitchEnvironment(ctx, newHookEnv(dir), SwitchOptions{DryRun: true})
+		result, err := es.SwitchEnvironment(ctx, newHookEnv(t, dir), SwitchOptions{DryRun: true})
 		if err != nil {
 			t.Fatalf("SwitchEnvironment() error = %v", err)
 		}
@@ -557,12 +560,13 @@ func TestEnvironmentSwitcher_SwitchEnvironment_DryRunHooks(t *testing.T) {
 	})
 
 	t.Run("normal_run_executes_hooks", func(t *testing.T) {
+		withTempConfigDir(t)
 		dir := t.TempDir()
 		es := NewEnvironmentSwitcher()
 		es.Register(newMockSwitcher("aws"))
 
 		ctx := context.Background()
-		result, err := es.SwitchEnvironment(ctx, newHookEnv(dir), SwitchOptions{})
+		result, err := es.SwitchEnvironment(ctx, newHookEnv(t, dir), SwitchOptions{})
 		if err != nil {
 			t.Fatalf("SwitchEnvironment() error = %v", err)
 		}
