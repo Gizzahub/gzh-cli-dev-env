@@ -28,7 +28,7 @@ ______________________________________________________________________
 
 **Library**: `gzh-cli-dev-env` (Development Environment Management)
 **Architecture**: Interface-driven design (follows gzh-cli-git pattern)
-**Go Version**: 1.26+ (development toolchain: 1.27.3; see `go.mod`)
+**Go Version**: 1.26+ (development toolchain: 1.27.4; see `go.mod`)
 **Main Branch**: `master`
 
 Core principle: ServiceSwitcher interface for unified cloud/container/SSH environment switching.
