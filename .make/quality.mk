@@ -209,21 +209,26 @@ lint-diff: install-golangci-lint ## lint only changed files (fast, for pre-commi
 	@echo -e "$(CYAN)🔍 Linting changed files only...$(RESET)"
 	@CHANGED_FILES=$$(git diff --name-only --diff-filter=d HEAD | grep '\.go$$' || true); \
 	if [ -n "$$CHANGED_FILES" ]; then \
-		echo "$$CHANGED_FILES" | tr '\n' ' ' | xargs -r "$(GOLANGCI_LINT)" run -c .golangci.yml --new-from-rev=HEAD~1 || echo -e "$(YELLOW)⚠️  Some issues found in changed files$(RESET)"; \
+		echo "$$CHANGED_FILES" | tr '\n' ' ' | xargs -r "$(GOLANGCI_LINT)" run -c .golangci.yml --new-from-rev=HEAD~1; \
 	else \
 		echo -e "$(YELLOW)No Go files changed$(RESET)"; \
 	fi
 
-lint-json: install-golangci-lint ## export lint results to JSON for further analysis
+lint-json: install-golangci-lint ## export lint results to JSON (fails when golangci-lint reports issues or errors)
 	@echo -e "$(CYAN)Exporting lint results to lint-report.json...$(RESET)"
-	@"$(GOLANGCI_LINT)" run -c .golangci.yml --max-issues-per-linter=0 --max-same-issues=0 --output.json.path=lint-report.json 2>/dev/null || true
-	@echo -e "$(GREEN)✅ Report saved to lint-report.json$(RESET)"
-	@if command -v jq >/dev/null 2>&1; then \
-		echo ""; \
-		echo -e "$(YELLOW)📈 JSON Report Summary:$(RESET)"; \
-		echo "  Total Issues: $$(jq '.Issues | length' lint-report.json 2>/dev/null || echo '0')"; \
-		echo "  Unique Files: $$(jq -r '.Issues[]? | .Pos.Filename' lint-report.json 2>/dev/null | sort | uniq | wc -l || echo '0')"; \
-	fi
+	@rm -f lint-report.json; rc=0; \
+	"$(GOLANGCI_LINT)" run -c .golangci.yml --max-issues-per-linter=0 --max-same-issues=0 --output.json.path=lint-report.json || rc=$$?; \
+	if [ -f lint-report.json ]; then \
+		echo -e "$(GREEN)✅ Report saved to lint-report.json$(RESET)"; \
+		if command -v jq >/dev/null 2>&1; then \
+			echo ""; \
+			echo -e "$(YELLOW)📈 JSON Report Summary:$(RESET)"; \
+			echo "  Total Issues: $$(jq '.Issues | length' lint-report.json)"; \
+			echo "  Unique Files: $$(jq -r '.Issues[]? | .Pos.Filename' lint-report.json | sort -u | wc -l)"; \
+		fi; \
+	fi; \
+	if [ $$rc -ne 0 ]; then echo -e "$(RED)❌ golangci-lint exited $$rc$(RESET)" >&2; fi; \
+	exit $$rc
 
 # ==============================================================================
 # Enhanced Code Analysis
