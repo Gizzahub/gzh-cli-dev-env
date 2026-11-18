@@ -156,7 +156,13 @@ func TestSnapshotCommandChild(t *testing.T) {
 			if err != nil {
 				os.Exit(18)
 			}
-			if err := os.WriteFile(os.Args[i+2], []byte(cwd), 0o600); err != nil {
+			// Publish the marker atomically: the parent polls for its
+			// existence and must never observe it before cwd is written.
+			tmp := os.Args[i+2] + ".tmp"
+			if err := os.WriteFile(tmp, []byte(cwd), 0o600); err != nil {
+				os.Exit(18)
+			}
+			if err := os.Rename(tmp, os.Args[i+2]); err != nil {
 				os.Exit(18)
 			}
 			for {
