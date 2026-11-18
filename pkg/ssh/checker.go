@@ -120,8 +120,7 @@ func (s *Checker) CheckHealth(ctx context.Context) (*status.HealthStatus, error)
 
 	// Check SSH config file
 	configPath := filepath.Join(os.Getenv("HOME"), ".ssh", "config")
-	//nolint:gosec // G703: Path is constructed from HOME env var (OS-managed) + fixed path components; no taint from user input
-	if _, err := os.Stat(configPath); err == nil {
+	if _, err := os.Stat(configPath); err == nil { // #nosec G703 -- path is HOME plus fixed components; no input from outside the invoking user
 		health.Details["config_file"] = configPath
 	}
 

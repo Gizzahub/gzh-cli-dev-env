@@ -28,7 +28,7 @@ func LoadEnvironment(data []byte) (*Environment, error) {
 
 // LoadEnvironmentFromFile loads an environment configuration from a file.
 func LoadEnvironmentFromFile(filepath string) (*Environment, error) {
-	data, err := os.ReadFile(filepath)
+	data, err := os.ReadFile(filepath) // #nosec G304 -- local CLI reads a path the invoking user chose (flag, env name, or own config dir); no privilege boundary
 	if err != nil {
 		return nil, fmt.Errorf("failed to read environment file: %w", err)
 	}

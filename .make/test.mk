@@ -9,7 +9,7 @@
 # Testing Targets
 # ==============================================================================
 
-.PHONY: test test-unit test-integration test-integration-only test-e2e test-e2e-only test-all
+.PHONY: test test-unit test-integration test-integration-only test-all
 .PHONY: cover cover-html cover-report bench test-coverage test-docker
 
 test: clean build ## run all tests with coverage (requires binary for integration tests)
@@ -34,11 +34,6 @@ test-integration-only: build ## run only integration tests with build tag
 	fi
 	@echo -e "$(GREEN)✅ Integration tests completed$(RESET)"
 
-test-e2e-only: ## run only e2e tests with build tag
-	@echo -e "$(CYAN)Running E2E tests...$(RESET)"
-	go test -tags=e2e -v ./test/e2e/...
-	@echo -e "$(GREEN)✅ E2E tests completed$(RESET)"
-
 test-integration: ## run Docker-based integration tests (alias for test-docker)
 	@echo -e "$(CYAN)Running Docker integration tests...$(RESET)"
 	@if [ -f "./test/integration/run_docker_tests.sh" ]; then \
@@ -49,17 +44,10 @@ test-integration: ## run Docker-based integration tests (alias for test-docker)
 	fi
 	@echo -e "$(GREEN)✅ Integration tests completed$(RESET)"
 
-test-e2e: build ## run End-to-End test scenarios
-	@echo -e "$(CYAN)Running E2E tests...$(RESET)"
-	@if [ -f "./test/e2e/run_e2e_tests.sh" ]; then \
-		./test/e2e/run_e2e_tests.sh all; \
-	else \
-		echo -e "$(YELLOW)No E2E test script found$(RESET)"; \
-		make test-e2e-only; \
-	fi
-	@echo -e "$(GREEN)✅ E2E tests completed$(RESET)"
-
-test-all: test test-integration test-e2e ## run all tests (unit, integration, e2e)
+# No e2e target: this repository ships a library with no binary (see build in
+# build.mk), and test/e2e has never existed here. End-to-end runs of the
+# mounted commands belong to the gzh-cli binary's test/e2e.
+test-all: test test-integration ## run all tests (unit, integration)
 	@echo -e "$(GREEN)✅ All tests completed successfully!$(RESET)"
 
 test-docker: test-integration ## alias for test-integration

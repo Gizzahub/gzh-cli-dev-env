@@ -160,7 +160,7 @@ func (opts *switchAllOptions) loadEnvironment() (*environment.Environment, error
 		if envFile == "" {
 			return nil, fmt.Errorf("environment '%s' not found", opts.env)
 		}
-		data, err = os.ReadFile(envFile)
+		data, err = os.ReadFile(envFile) // #nosec G304 -- local CLI reads a path the invoking user chose (flag, env name, or own config dir); no privilege boundary
 		if err != nil {
 			return nil, fmt.Errorf("failed to read environment file %s: %w", envFile, err)
 		}
@@ -190,7 +190,7 @@ func (opts *switchAllOptions) findEnvironmentFile(envName string) string {
 	for _, searchPath := range searchPaths {
 		for _, ext := range extensions {
 			filename := filepath.Join(searchPath, envName+ext)
-			if _, err := os.Stat(filename); err == nil {
+			if _, err := os.Stat(filename); err == nil { // #nosec G703 -- local CLI reads a path the invoking user chose (flag, env name, or own config dir); no privilege boundary
 				return filename
 			}
 		}
@@ -256,7 +256,7 @@ func (opts *switchAllOptions) findAvailableEnvironments() ([]environment.Environ
 		}
 
 		envPath := filepath.Join(envDir, filename)
-		data, err := os.ReadFile(envPath)
+		data, err := os.ReadFile(envPath) // #nosec G304 G703 -- file listed from the user's own environments dir
 		if err != nil {
 			continue // Skip files that can't be read
 		}
@@ -290,7 +290,9 @@ func (opts *switchAllOptions) confirmSwitch(env *environment.Environment) error 
 
 	fmt.Print("Continue? [y/N]: ")
 	var response string
-	fmt.Scanln(&response)
+	if _, err := fmt.Scanln(&response); err != nil {
+		return fmt.Errorf("operation canceled: read confirmation: %w", err)
+	}
 
 	if response != "y" && response != "Y" && response != "yes" {
 		return fmt.Errorf("operation canceled by user")

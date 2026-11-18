@@ -35,7 +35,7 @@ func (d *Switcher) Switch(ctx context.Context, config any) error {
 
 	// Set Docker context
 	if dockerConfig.Context != "" {
-		cmd := exec.CommandContext(ctx, "docker", "context", "use", dockerConfig.Context)
+		cmd := exec.CommandContext(ctx, "docker", "context", "use", dockerConfig.Context) // #nosec G204 -- fixed binary with argv (no shell); values come from the invoking user's own environment config
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to set Docker context: %w", err)
 		}
@@ -64,7 +64,7 @@ func (d *Switcher) getCurrentState(ctx context.Context, run snapshotCommand) (an
 }
 
 func runSnapshotCommand(ctx context.Context, _ string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, "docker", args...)
+	cmd := exec.CommandContext(ctx, "docker", args...) // #nosec G204 -- fixed binary with argv (no shell); values come from the invoking user's own environment config
 	return cmd.Output()
 }
 

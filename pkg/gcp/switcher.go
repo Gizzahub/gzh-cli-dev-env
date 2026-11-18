@@ -35,7 +35,7 @@ func (g *Switcher) Switch(ctx context.Context, config any) error {
 
 	// Set GCP project
 	if gcpConfig.Project != "" {
-		cmd := exec.CommandContext(ctx, "gcloud", "config", "set", "project", gcpConfig.Project)
+		cmd := exec.CommandContext(ctx, "gcloud", "config", "set", "project", gcpConfig.Project) // #nosec G204 -- fixed binary with argv (no shell); values come from the invoking user's own environment config
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to set GCP project: %w", err)
 		}
@@ -43,7 +43,7 @@ func (g *Switcher) Switch(ctx context.Context, config any) error {
 
 	// Set GCP account
 	if gcpConfig.Account != "" {
-		cmd := exec.CommandContext(ctx, "gcloud", "config", "set", "account", gcpConfig.Account)
+		cmd := exec.CommandContext(ctx, "gcloud", "config", "set", "account", gcpConfig.Account) // #nosec G204 -- fixed binary with argv (no shell); values come from the invoking user's own environment config
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to set GCP account: %w", err)
 		}
@@ -51,7 +51,7 @@ func (g *Switcher) Switch(ctx context.Context, config any) error {
 
 	// Set GCP region
 	if gcpConfig.Region != "" {
-		cmd := exec.CommandContext(ctx, "gcloud", "config", "set", "compute/region", gcpConfig.Region)
+		cmd := exec.CommandContext(ctx, "gcloud", "config", "set", "compute/region", gcpConfig.Region) // #nosec G204 -- fixed binary with argv (no shell); values come from the invoking user's own environment config
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to set GCP region: %w", err)
 		}
@@ -88,7 +88,7 @@ func (g *Switcher) getCurrentState(ctx context.Context, run snapshotCommand) (an
 }
 
 func runSnapshotCommand(ctx context.Context, _ string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, "gcloud", args...)
+	cmd := exec.CommandContext(ctx, "gcloud", args...) // #nosec G204 -- fixed binary with argv (no shell); values come from the invoking user's own environment config
 	return cmd.Output()
 }
 

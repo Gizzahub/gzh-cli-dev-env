@@ -240,19 +240,17 @@ security: security-deps security-code ## run all security checks
 
 security-deps: ## check dependencies for vulnerabilities
 	@echo -e "$(CYAN)Checking dependencies for vulnerabilities...$(RESET)"
-	@go run golang.org/x/vuln/cmd/govulncheck@latest ./... || echo -e "$(RED)❌ Vulnerabilities found$(RESET)"
+	@go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
 security-code: ## run security code analysis
 	@echo -e "$(CYAN)Running security code analysis with gosec...$(RESET)"
-	@command -v gosec >/dev/null 2>&1 || { echo "Installing gosec..." && go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest; }
-	@gosec -config=.gosec.yaml ./... 2>/dev/null || echo -e "$(YELLOW)No gosec config found, using defaults$(RESET)"
+	@command -v gosec >/dev/null 2>&1 || { echo "gosec not installed. Install: go install github.com/securego/gosec/v2/cmd/gosec@v2.30.0" >&2; exit 1; }
+	@gosec -exclude-generated ./...
 
 security-json: ## run security analysis and output JSON/SARIF report
 	@echo -e "$(CYAN)Running security analysis with JSON/SARIF output...$(RESET)"
-	@command -v gosec >/dev/null 2>&1 || { echo "Installing gosec..." && go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest; }
-	@gosec -fmt=sarif -out=gosec-report.json -config=.gosec.yaml ./... 2>/dev/null || \
-		gosec -fmt=sarif -out=gosec-report.json ./... 2>/dev/null || \
-		(echo -e "$(YELLOW)⚠️  Security scan completed with warnings$(RESET)" && touch gosec-report.json)
+	@command -v gosec >/dev/null 2>&1 || { echo "gosec not installed. Install: go install github.com/securego/gosec/v2/cmd/gosec@v2.30.0" >&2; exit 1; }
+	@gosec -exclude-generated -fmt=sarif -out=gosec-report.json ./...
 	@echo -e "$(GREEN)✅ Security report generated: gosec-report.json$(RESET)"
 
 # ==============================================================================

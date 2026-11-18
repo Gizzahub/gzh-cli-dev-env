@@ -256,13 +256,13 @@ func (m *Manager) Exists(name, storePath string) bool {
 
 // copyFile copies a file from src to dst.
 func copyFile(src, dst string) error {
-	sourceFile, err := os.Open(src)
+	sourceFile, err := os.Open(src) // #nosec G304 -- path is inside the user's own config store managed by this tool
 	if err != nil {
 		return err
 	}
 	defer sourceFile.Close()
 
-	destFile, err := os.Create(dst)
+	destFile, err := os.Create(dst) // #nosec G304 -- path is inside the user's own config store managed by this tool
 	if err != nil {
 		return err
 	}
@@ -274,7 +274,7 @@ func copyFile(src, dst string) error {
 
 // saveMetadata saves metadata to a JSON file.
 func saveMetadata(filename string, metadata ConfigMetadata) error {
-	file, err := os.Create(filename)
+	file, err := os.Create(filename) // #nosec G304 -- path is inside the user's own config store managed by this tool
 	if err != nil {
 		return err
 	}
@@ -287,7 +287,7 @@ func saveMetadata(filename string, metadata ConfigMetadata) error {
 
 // loadMetadata loads metadata from a JSON file.
 func loadMetadata(filename string) (*ConfigMetadata, error) {
-	file, err := os.Open(filename)
+	file, err := os.Open(filename) // #nosec G304 -- path is inside the user's own config store managed by this tool
 	if err != nil {
 		return nil, err
 	}

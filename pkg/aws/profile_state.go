@@ -36,7 +36,7 @@ func writeActiveProfile(profile string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("create config dir: %w", err)
 	}
 	if err := os.WriteFile(path, []byte(strings.TrimSpace(profile)+"\n"), 0o600); err != nil {
@@ -52,7 +52,7 @@ func readActiveProfile() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is this tool's own state file under the user's config dir
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", nil

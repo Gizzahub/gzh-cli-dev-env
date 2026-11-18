@@ -82,7 +82,7 @@ func WriteJournal(path string, dryRun bool, envName string, previousStates map[s
 		}
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("create journal dir: %w", err)
 	}
 
@@ -112,7 +112,7 @@ func LoadJournal(path string) (*RollbackJournal, error) {
 	if path == "" {
 		return nil, nil //nolint:nilnil // absent journal is not an error
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is this tool's own state file under the user's config dir
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil //nolint:nilnil // missing file is an empty journal
