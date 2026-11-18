@@ -109,7 +109,7 @@ install-analysis-tools: ## install code analysis tools
 	@command -v ineffassign >/dev/null 2>&1 || { echo "Installing ineffassign..." && go install github.com/gordonklaus/ineffassign@latest; }
 	@command -v dupl >/dev/null 2>&1 || { echo "Installing dupl..." && go install github.com/mibk/dupl@latest; }
 	@command -v staticcheck >/dev/null 2>&1 || { echo "Installing staticcheck..." && go install honnef.co/go/tools/cmd/staticcheck@latest; }
-	@command -v gosec >/dev/null 2>&1 || { echo "Installing gosec..." && go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest; }
+	@command -v gosec >/dev/null 2>&1 || { echo "Installing gosec..." && go install github.com/securego/gosec/v2/cmd/gosec@v2.30.0; }
 	@echo -e "$(GREEN)✅ All analysis tools installed!$(RESET)"
 
 install-golangci-lint: ## install the pinned golangci-lint v2 release
@@ -208,7 +208,7 @@ install-docs-tools: ## install documentation tools
 
 install-security-tools: ## install security analysis tools
 	@echo -e "$(CYAN)Installing security tools...$(RESET)"
-	@command -v gosec >/dev/null 2>&1 || { echo "Installing gosec..." && go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest; }
+	@command -v gosec >/dev/null 2>&1 || { echo "Installing gosec..." && go install github.com/securego/gosec/v2/cmd/gosec@v2.30.0; }
 	@echo -e "$(GREEN)✅ Security tools installed!$(RESET)"
 
 # ==============================================================================
@@ -219,7 +219,7 @@ install-security-tools: ## install security analysis tools
 
 install-vuln-tools: ## install vulnerability scanning tools
 	@echo -e "$(CYAN)Installing vulnerability scanning tools...$(RESET)"
-	@echo "govulncheck is available as: go run golang.org/x/vuln/cmd/govulncheck@latest"
+	@echo "govulncheck is available as: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0"
 	@echo -e "$(GREEN)✅ Vulnerability tools ready!$(RESET)"
 
 # ==============================================================================

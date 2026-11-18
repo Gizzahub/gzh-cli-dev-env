@@ -155,7 +155,7 @@ func readRegular(path string) (data []byte, present bool, mode os.FileMode, resu
 	if !info.Mode().IsRegular() {
 		return nil, false, 0, fmt.Errorf("refusing non-regular AWS state file: %s", path)
 	}
-	data, err = os.ReadFile(path) // #nosec G304 -- AWS state path under the user's HOME, checked regular via Lstat above
+	data, err = os.ReadFile(path) // #nosec G304 -- AWS config path from AWS_CONFIG_FILE or HOME, chosen by the invoking user; checked regular via Lstat above
 	return data, true, info.Mode(), err
 }
 

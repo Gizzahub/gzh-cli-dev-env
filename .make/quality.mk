@@ -454,7 +454,6 @@ lint-help: ## show comprehensive help for linting targets
 	@echo -e "$(YELLOW)📁 Configuration Files:$(RESET)"
 	@echo "  .golangci.yml             golangci-lint configuration"
 	@echo "  .pre-commit-config.yaml   Pre-commit hooks configuration"
-	@echo "  .gosec.yaml              gosec security scanner configuration"
 
 .PHONY: format-md-all-check mdformat-install-test markdown-selector-test
 format-md-all-check: install-mdformat ## 전체 Markdown을 변경 없이 검사

@@ -149,7 +149,6 @@ test-info: ## show testing information and available targets
 	@echo -e "$(GREEN)🧪 Test Categories:$(RESET)"
 	@echo -e "  • $(CYAN)Unit Tests$(RESET)          Fast, isolated component tests"
 	@echo -e "  • $(CYAN)Integration Tests$(RESET)   Docker-based service integration"
-	@echo -e "  • $(CYAN)E2E Tests$(RESET)           End-to-end scenario testing"
 	@echo ""
 	@echo -e "$(GREEN)📊 Coverage Targets:$(RESET)"
 	@echo -e "  • $(CYAN)cover$(RESET)               Display test coverage"
