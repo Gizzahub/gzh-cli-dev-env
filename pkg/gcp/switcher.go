@@ -32,10 +32,21 @@ func (g *Switcher) Switch(ctx context.Context, config any) error {
 	if !ok || gcpConfig == nil {
 		return fmt.Errorf("invalid GCP configuration type")
 	}
+	// Validate every value before running any command so a rejected field
+	// never leaves a partially applied configuration.
+	for _, field := range []struct{ name, value string }{
+		{"GCP project", gcpConfig.Project},
+		{"GCP account", gcpConfig.Account},
+		{"GCP region", gcpConfig.Region},
+	} {
+		if err := environment.RejectOptionLikeValue(field.name, field.value); err != nil {
+			return err
+		}
+	}
 
 	// Set GCP project
 	if gcpConfig.Project != "" {
-		cmd := exec.CommandContext(ctx, "gcloud", "config", "set", "project", gcpConfig.Project) // #nosec G204 -- fixed binary with argv (no shell); values come from the environment file the invoking user selected
+		cmd := exec.CommandContext(ctx, "gcloud", "config", "set", "project", gcpConfig.Project) // #nosec G204 -- fixed binary with argv (no shell); the value was checked above not to start with '-'
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to set GCP project: %w", err)
 		}
@@ -43,7 +54,7 @@ func (g *Switcher) Switch(ctx context.Context, config any) error {
 
 	// Set GCP account
 	if gcpConfig.Account != "" {
-		cmd := exec.CommandContext(ctx, "gcloud", "config", "set", "account", gcpConfig.Account) // #nosec G204 -- fixed binary with argv (no shell); values come from the environment file the invoking user selected
+		cmd := exec.CommandContext(ctx, "gcloud", "config", "set", "account", gcpConfig.Account) // #nosec G204 -- fixed binary with argv (no shell); the value was checked above not to start with '-'
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to set GCP account: %w", err)
 		}
@@ -51,7 +62,7 @@ func (g *Switcher) Switch(ctx context.Context, config any) error {
 
 	// Set GCP region
 	if gcpConfig.Region != "" {
-		cmd := exec.CommandContext(ctx, "gcloud", "config", "set", "compute/region", gcpConfig.Region) // #nosec G204 -- fixed binary with argv (no shell); values come from the environment file the invoking user selected
+		cmd := exec.CommandContext(ctx, "gcloud", "config", "set", "compute/region", gcpConfig.Region) // #nosec G204 -- fixed binary with argv (no shell); the value was checked above not to start with '-'
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to set GCP region: %w", err)
 		}

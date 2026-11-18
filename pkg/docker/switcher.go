@@ -32,10 +32,13 @@ func (d *Switcher) Switch(ctx context.Context, config any) error {
 	if !ok || dockerConfig == nil {
 		return fmt.Errorf("invalid Docker configuration type")
 	}
+	if err := environment.RejectOptionLikeValue("Docker context", dockerConfig.Context); err != nil {
+		return err
+	}
 
 	// Set Docker context
 	if dockerConfig.Context != "" {
-		cmd := exec.CommandContext(ctx, "docker", "context", "use", dockerConfig.Context) // #nosec G204 -- fixed binary with argv (no shell); values come from the environment file the invoking user selected
+		cmd := exec.CommandContext(ctx, "docker", "context", "use", dockerConfig.Context) // #nosec G204 -- fixed binary with argv (no shell); the value was checked above not to start with '-'
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to set Docker context: %w", err)
 		}
