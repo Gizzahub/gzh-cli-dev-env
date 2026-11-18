@@ -81,3 +81,12 @@ configs/templates/*.local.yaml
 *.tar.gz
 *.zip
 checksums.txt
+
+# CE task runtime: track only the root declaration. ~/.gitignore_global ignores
+# .ce/, so the root directory is re-included and its other contents re-ignored.
+!/.ce/
+/.ce/*
+!/.ce/task-runtime.yaml
+
+# Task cards live in the gzh-cli-devbox board (user decision 2026-11-18).
+/tasks/
