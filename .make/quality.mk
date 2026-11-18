@@ -207,7 +207,7 @@ lint-status: install-golangci-lint ## comprehensive lint status report
 
 lint-diff: install-golangci-lint ## lint only issues in uncommitted changes (fast, for pre-commit)
 	@echo -e "$(CYAN)🔍 Linting changes against HEAD...$(RESET)"
-	@CHANGED=$$(git diff --name-only --diff-filter=d HEAD -- '*.go') || exit $$?; \
+	@CHANGED=$$(git diff --name-only HEAD -- '*.go') || exit $$?; \
 	UNTRACKED=$$(git ls-files --others --exclude-standard -- '*.go') || exit $$?; \
 	CHANGED="$$CHANGED$$UNTRACKED"; \
 	if [ -n "$$CHANGED" ]; then \
