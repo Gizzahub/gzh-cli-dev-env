@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/gizzahub/gzh-cli-dev-env/pkg/environment"
 )
 
 const (
@@ -62,7 +64,10 @@ func readActiveProfile() (string, error) {
 	return strings.TrimSpace(string(data)), nil
 }
 
-// resolveActiveProfile returns the active profile in priority order:
+// resolveActiveProfile is the best-effort variant: any resolution error,
+// including a rejected option-like value, yields "". Callers that would run a
+// command with the result must use resolveActiveProfileStrict.
+// It returns the active profile in priority order:
 // 1. AWS_PROFILE environment variable
 // 2. state file written by Switch
 // 3. empty string.
@@ -76,9 +81,20 @@ func resolveActiveProfile() string {
 
 // 트랜잭션 snapshot은 상태 파일 읽기 실패와 정상적인 미설정을 구분한다.
 // status 소비자는 기존 best-effort facade를 계속 사용한다.
+//
+// The value comes from AWS_PROFILE or a state file that another tool may have
+// written and later becomes `--profile` argv, so an option-like value is
+// rejected here with environment.ErrOptionLikeValue.
 func resolveActiveProfileStrict() (string, error) {
-	if profile := os.Getenv("AWS_PROFILE"); profile != "" {
-		return profile, nil
+	profile := os.Getenv("AWS_PROFILE")
+	if profile == "" {
+		var err error
+		if profile, err = readActiveProfile(); err != nil {
+			return "", err
+		}
 	}
-	return readActiveProfile()
+	if err := environment.RejectOptionLikeValue("aws profile", profile); err != nil {
+		return "", err
+	}
+	return profile, nil
 }

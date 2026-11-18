@@ -100,7 +100,10 @@ func TestChecker_getCurrentProfile_WithEnvVar(t *testing.T) {
 	// Set AWS_PROFILE environment variable
 	t.Setenv("AWS_PROFILE", "test-profile")
 
-	profile := checker.getCurrentProfile()
+	profile, err := checker.getCurrentProfile()
+	if err != nil {
+		t.Fatalf("getCurrentProfile() error = %v", err)
+	}
 	if profile != "test-profile" {
 		t.Errorf("getCurrentProfile() = %q, want %q", profile, "test-profile")
 	}
@@ -120,7 +123,10 @@ func TestChecker_getCurrentProfile_FromStateFile_whenEnvEmpty(t *testing.T) {
 	checker := NewChecker()
 
 	// When
-	profile := checker.getCurrentProfile()
+	profile, err := checker.getCurrentProfile()
+	if err != nil {
+		t.Fatalf("getCurrentProfile() error = %v", err)
+	}
 
 	// Then
 	if profile != "checker-state-profile" {
@@ -139,7 +145,10 @@ func TestChecker_getCurrentProfile_Empty_whenNeitherSet(t *testing.T) {
 	checker := NewChecker()
 
 	// When
-	profile := checker.getCurrentProfile()
+	profile, err := checker.getCurrentProfile()
+	if err != nil {
+		t.Fatalf("getCurrentProfile() error = %v", err)
+	}
 
 	// Then
 	if profile != "" {

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gizzahub/gzh-cli-dev-env/pkg/environment"
 	"github.com/gizzahub/gzh-cli-dev-env/pkg/status"
 )
 
@@ -57,7 +58,13 @@ func (a *Checker) CheckStatus(ctx context.Context) (*status.ServiceStatus, error
 	}
 
 	// Get current profile
-	profile := a.getCurrentProfile()
+	profile, err := a.getCurrentProfile()
+	if err != nil {
+		st.Status = status.StatusError
+		st.Details["error"] = err.Error()
+		//nolint:nilerr // intentional: errors converted to status fields
+		return st, nil
+	}
 	if profile == "" {
 		st.Status = status.StatusInactive
 		st.Details["error"] = "No AWS profile configured"
@@ -99,7 +106,13 @@ func (a *Checker) CheckHealth(ctx context.Context) (*status.HealthStatus, error)
 	}
 
 	// Test STS GetCallerIdentity
-	profile := a.getCurrentProfile()
+	profile, err := a.getCurrentProfile()
+	if err != nil {
+		health.Status = status.StatusError
+		health.Message = fmt.Sprintf("Invalid AWS profile: %v", err)
+		health.Duration = time.Since(start)
+		return health, nil
+	}
 	args := []string{"sts", "get-caller-identity", "--output", "json"}
 	if profile != "" {
 		args = append(args, "--profile", profile)
@@ -133,8 +146,14 @@ func (a *Checker) isCLIAvailable() bool {
 
 // getCurrentProfile gets the current AWS profile.
 // Order matches Switcher.GetCurrentState: AWS_PROFILE → state file → empty.
-func (a *Checker) getCurrentProfile() string {
-	return resolveActiveProfile()
+// An option-like profile is returned as an error so no aws command runs with
+// it; other resolution errors stay best-effort (empty profile).
+func (a *Checker) getCurrentProfile() (string, error) {
+	profile, err := resolveActiveProfileStrict()
+	if errors.Is(err, environment.ErrOptionLikeValue) {
+		return "", err
+	}
+	return profile, nil
 }
 
 // getCurrentRegion gets the current AWS region.

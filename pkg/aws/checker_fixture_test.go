@@ -402,3 +402,38 @@ func TestCheckerFixtureRegionCancellation(t *testing.T) {
 	}
 	assertCheckerCalls(t, trace, "aws configure get region --profile fixture")
 }
+
+// TestCheckerFixtureRejectsOptionLikeProfile proves an option-like active
+// profile from AWS_PROFILE or the state file runs no aws command in either
+// CheckStatus or CheckHealth.
+func TestCheckerFixtureRejectsOptionLikeProfile(t *testing.T) {
+	for _, source := range []string{"env", "state file"} {
+		t.Run(source, func(t *testing.T) {
+			trace := checkerFixture(t, nil)
+			cfgDir := withTempConfigDir(t)
+			t.Setenv("AWS_PROFILE", "")
+			if source == "env" {
+				t.Setenv("AWS_PROFILE", "--debug")
+			} else {
+				dir := filepath.Join(cfgDir, configAppDir)
+				if err := os.MkdirAll(dir, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(dir, activeProfileFileName), []byte("--debug\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			st, err := NewChecker().CheckStatus(context.Background())
+			if err != nil || st.Status != status.StatusError {
+				t.Fatalf("CheckStatus() = %+v, %v; want StatusError", st, err)
+			}
+			health, err := NewChecker().CheckHealth(context.Background())
+			if err != nil || health.Status != status.StatusError {
+				t.Fatalf("CheckHealth() = %+v, %v; want StatusError", health, err)
+			}
+			if data, readErr := os.ReadFile(trace); readErr == nil && len(data) != 0 {
+				t.Fatalf("aws ran despite rejection: %s", data)
+			}
+		})
+	}
+}
