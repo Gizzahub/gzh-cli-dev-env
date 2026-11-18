@@ -38,6 +38,12 @@ func (k *Switcher) Switch(ctx context.Context, config any) error {
 	if !ok || kubernetesConfig == nil {
 		return fmt.Errorf("invalid Kubernetes configuration type")
 	}
+	if err := environment.RejectOptionLikeValue("kubernetes context", kubernetesConfig.Context); err != nil {
+		return err
+	}
+	if err := environment.RejectOptionLikeValue("kubernetes namespace", kubernetesConfig.Namespace); err != nil {
+		return err
+	}
 
 	// Set Kubernetes context
 	if kubernetesConfig.Context != "" {

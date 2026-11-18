@@ -38,6 +38,9 @@ func (a *Switcher) Switch(ctx context.Context, config any) error {
 	if !ok || azureConfig == nil {
 		return fmt.Errorf("invalid Azure configuration type")
 	}
+	if err := environment.RejectOptionLikeValue("azure subscription", azureConfig.Subscription); err != nil {
+		return err
+	}
 
 	// Set Azure subscription
 	if azureConfig.Subscription != "" {
