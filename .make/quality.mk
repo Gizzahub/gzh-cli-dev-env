@@ -205,11 +205,13 @@ lint-status: install-golangci-lint ## comprehensive lint status report
 	grep -E "^[^[:space:]].*\\([^)]+\\)$$" | sed 's/^\\([^:]*\\):.*/\\1/' | sort | uniq -c | sort -nr | head -5 | \
 	awk '{printf "  $(MAGENTA)%-40s$(RESET) %d issues\\n", $$2, $$1}'
 
-lint-diff: install-golangci-lint ## lint only changed files (fast, for pre-commit)
-	@echo -e "$(CYAN)🔍 Linting changed files only...$(RESET)"
-	@CHANGED_FILES=$$(git diff --name-only --diff-filter=d HEAD | grep '\.go$$' || true); \
-	if [ -n "$$CHANGED_FILES" ]; then \
-		echo "$$CHANGED_FILES" | tr '\n' ' ' | xargs -r "$(GOLANGCI_LINT)" run -c .golangci.yml --new-from-rev=HEAD~1; \
+lint-diff: install-golangci-lint ## lint only issues in uncommitted changes (fast, for pre-commit)
+	@echo -e "$(CYAN)🔍 Linting changes against HEAD...$(RESET)"
+	@CHANGED=$$(git diff --name-only --diff-filter=d HEAD -- '*.go') || exit $$?; \
+	UNTRACKED=$$(git ls-files --others --exclude-standard -- '*.go') || exit $$?; \
+	CHANGED="$$CHANGED$$UNTRACKED"; \
+	if [ -n "$$CHANGED" ]; then \
+		"$(GOLANGCI_LINT)" run -c .golangci.yml --new-from-rev=HEAD ./...; \
 	else \
 		echo -e "$(YELLOW)No Go files changed$(RESET)"; \
 	fi
