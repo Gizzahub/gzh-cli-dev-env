@@ -17,8 +17,9 @@ import (
 // profile fails before the profile state file is written or aws runs.
 func TestSwitch_RejectsOptionLikeRegionOrProfile(t *testing.T) {
 	tests := map[string]*environment.AWSConfig{
-		"region":  {Profile: "dev", Region: "-h"},
-		"profile": {Profile: "--debug", Region: "ap-northeast-2"},
+		"region":       {Profile: "dev", Region: "-h"},
+		"profile":      {Profile: "--debug", Region: "ap-northeast-2"},
+		"profile only": {Profile: "--debug"},
 	}
 	for name, cfg := range tests {
 		t.Run(name, func(t *testing.T) {

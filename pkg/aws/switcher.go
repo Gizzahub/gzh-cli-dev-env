@@ -62,13 +62,16 @@ func (a *Switcher) ApplyState(ctx context.Context, value any) error {
 	if state.Request.Profile == "" && state.Request.Region == "" {
 		return nil
 	}
-	if state.Request.Region != "" {
-		// Region and TargetProfile become `aws configure set` argv; reject
-		// option-like values before the profile file or the CLI is touched.
-		if err := environment.RejectOptionLikeValue("aws region", state.Request.Region); err != nil {
-			return err
-		}
-		if err := environment.RejectOptionLikeValue("aws profile", state.TargetProfile); err != nil {
+	// Region and TargetProfile become `aws configure set` argv, and a persisted
+	// profile later becomes `aws configure get --profile` argv in
+	// GetCurrentState. Reject option-like values before the profile file or the
+	// CLI is touched.
+	for _, v := range [...]struct{ field, value string }{
+		{"aws region", state.Request.Region},
+		{"aws profile", state.Request.Profile},
+		{"aws target profile", state.TargetProfile},
+	} {
+		if err := environment.RejectOptionLikeValue(v.field, v.value); err != nil {
 			return err
 		}
 	}
